@@ -3,31 +3,45 @@ import { SignalAssignment } from "./ConcurrentStatement";
 import {
   BinaryExpression,
   BinaryOperator,
+  LiteralExpression,
   SignalExpression,
 } from "./Expression";
-import { BitType } from "./Types";
-import { BitValue } from "./Values";
+import { IndexedTarget, SignalTarget } from "./Target";
+import { ArrayType, BitType } from "./Types";
+import { ArrayValue, BitValue, IntValue } from "./Values";
 
 const arch = new Architecture("TestArch");
-arch.addSignalDef("a", BitType, new BitValue(0));
-arch.addSignalDef("b", BitType, new BitValue(1));
-arch.addConcurrentStatement(
-  new SignalAssignment(
-    "a",
-    new BinaryExpression(
-      new SignalExpression("a"),
-      BinaryOperator.OR,
-      new SignalExpression("b"),
-    ),
-  ),
+arch.addSignalDef(
+  "a",
+  new ArrayType(BitType, 0, 3),
+  new ArrayValue([
+    new BitValue(1),
+    new BitValue(0),
+    new BitValue(0),
+    new BitValue(0),
+  ]),
+);
+arch.addSignalDef(
+  "b",
+  BitType,
+  new BitValue(0),
 );
 arch.addConcurrentStatement(
   new SignalAssignment(
-    "b",
+    new SignalTarget("b"),
     new BinaryExpression(
-      new SignalExpression("a"),
-      BinaryOperator.AND,
-      new SignalExpression("b"),
+      new SignalExpression(new SignalTarget("b")),
+      BinaryOperator.OR,
+      new BinaryExpression(
+        new LiteralExpression(new BitValue(1)),
+        BinaryOperator.AND,
+        new SignalExpression(
+          new IndexedTarget(
+            new SignalTarget("a"),
+            new LiteralExpression(new IntValue(0)),
+          ),
+        ),
+      ),
     ),
   ),
 );

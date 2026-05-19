@@ -1,6 +1,7 @@
 import type { Architecture } from "./Architecture";
 import type { FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
+import type { Target } from "./Target";
 import { BitType } from "./Types";
 import { BitValue, type BaseValue } from "./Values";
 
@@ -10,20 +11,20 @@ export abstract class Expression implements Formattable {
 }
 
 export class SignalExpression extends Expression {
-  constructor(public signalName: string) {
+  constructor(public target: Target) {
     super();
   }
 
   evaluate(architecture: Architecture): BaseValue<any> {
-    const value = architecture.signalValues.get(this.signalName);
+    const value = this.target.getValue(architecture);
     if (value === undefined) {
-      throw new Error(`Signal ${this.signalName} not found in architecture`);
+      throw new Error(`Signal ${this.target} not found in architecture`);
     }
     return value.current;
   }
 
   toString(fmt?: FmtContext): string {
-    return this.signalName;
+    return this.target.toString(fmt);
   }
 }
 
@@ -48,7 +49,7 @@ export abstract class BinaryOperator implements Formattable {
   static AND: BinaryOperator = new (class extends BinaryOperator {
     apply(left: BaseValue<any>, right: BaseValue<any>): BaseValue<any> {
       if (!BitType.isType(left) || !BitType.isType(right)) {
-        throw new Error(`AND operator requires bit values`);
+        throw new Error(`AND operator requires bit values. Got ${left.getType().toString()} and ${right.getType().toString()}`);
       }
       return new BitValue((left.value as boolean) && (right.value as boolean));
     }
@@ -61,7 +62,7 @@ export abstract class BinaryOperator implements Formattable {
   static OR: BinaryOperator = new (class extends BinaryOperator {
     apply(left: BaseValue<any>, right: BaseValue<any>): BaseValue<any> {
       if (!BitType.isType(left) || !BitType.isType(right)) {
-        throw new Error(`OR operator requires bit values`);
+        throw new Error(`OR operator requires bit values. Got ${left.getType().toString()} and ${right.getType().toString()}`);
       }
       return new BitValue((left.value as boolean) || (right.value as boolean));
     }
@@ -99,7 +100,7 @@ export abstract class UnaryOperator implements Formattable {
   static NOT: UnaryOperator = new (class extends UnaryOperator {
     apply(operand: BaseValue<any>): BaseValue<any> {
       if (!BitType.isType(operand)) {
-        throw new Error(`NOT operator requires bit value`);
+        throw new Error(`NOT operator requires bit value. Got ${operand.getType().toString()}`);
       }
       return new BitValue(!(operand.value as boolean));
     }
@@ -125,5 +126,31 @@ export class UnaryExpression extends Expression {
 
   toString(fmt?: FmtContext): string {
     return `(${this.operator.toString(fmt)} ${this.operand.toString(fmt)})`;
+  }
+}
+
+export class IndexExpression extends Expression {
+  constructor(public array: Expression, public index: Expression) {
+    super();
+  }
+
+  evaluate(architecture: Architecture): BaseValue<any> {
+    const arrayValue = this.array.evaluate(architecture);
+    const indexValue = this.index.evaluate(architecture);
+    if (!Array.isArray(arrayValue.value)) {
+      throw new Error(`Index operator requires array value`);
+    }
+    if (typeof indexValue.value !== "number") {
+      throw new Error(`Index operator requires numeric index`);
+    }
+    const element = arrayValue.value[indexValue.value];
+    if (element === undefined) {
+      throw new Error(`Index out of bounds`);
+    }
+    return element;
+  }
+
+  toString(fmt?: FmtContext): string {
+    return `${this.array.toString(fmt)}[${this.index.toString(fmt)}]`;
   }
 }

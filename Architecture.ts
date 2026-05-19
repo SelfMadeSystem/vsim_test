@@ -1,14 +1,16 @@
 import type { ConcurrentStatement } from "./ConcurrentStatement";
 import { getIndent, indentCtx, type FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
+import type { Target } from "./Target";
 import type { BaseType } from "./Types";
 import { ProjectedValue, UnknownValue, type BaseValue } from "./Values";
 
 export class Architecture implements Formattable {
   public name: string;
   public signalTypes: Map<string, BaseType> = new Map();
-  public signalValues: Map<string, ProjectedValue<any>> = new Map();
+  public signalValues: Map<string, ProjectedValue> = new Map();
   public concurrentStatements: ConcurrentStatement[] = [];
+  public deltaChange: boolean = false;
 
   constructor(name: string) {
     this.name = name;
@@ -19,7 +21,7 @@ export class Architecture implements Formattable {
       throw new Error(`Signal ${name} already exists in architecture`);
     }
     this.signalTypes.set(name, type);
-    this.signalValues.set(name, new ProjectedValue(new UnknownValue()));
+    this.signalValues.set(name, new ProjectedValue(UnknownValue));
   }
 
   addSignalDef(name: string, type: BaseType, initialValue: BaseValue<any>) {
@@ -39,22 +41,22 @@ export class Architecture implements Formattable {
     this.concurrentStatements.push(statement);
   }
 
-  setProjectedValue(signalName: string, value: BaseValue<any>) {
-    const projectedValue = this.signalValues.get(signalName);
-    if (projectedValue === undefined) {
-      throw new Error(`Signal ${signalName} not found in architecture`);
-    }
-    if (!projectedValue.current.getType().isType(value)) {
-      throw new Error(
-        `Type mismatch for signal ${signalName}: expected ${projectedValue.current.getType().toString()}, got ${value.getType().toString()}`,
-      );
-    }
+  setProjectedValue(target: Target, value: BaseValue<any>) {
+    const projectedValue = target.getValue(this);
     projectedValue.setProjected(value);
   }
 
   run() {
-    this.execute();
-    this.commit();
+    let i = 0;
+    do {
+      this.deltaChange = false;
+      this.execute();
+      this.commit();
+      i++;
+      if (i > 1000) {
+        throw new Error("Simulation did not converge after 1000 iterations");
+      }
+    } while (this.deltaChange);
   }
 
   private execute() {
@@ -65,9 +67,8 @@ export class Architecture implements Formattable {
 
   private commit() {
     for (const [, projectedValue] of this.signalValues) {
-      if (projectedValue.projected !== null) {
-        projectedValue.commit();
-      }
+      if (projectedValue.projected === null) continue;
+      if (projectedValue.commit()) this.deltaChange = true;
     }
   }
 
@@ -79,10 +80,21 @@ export class Architecture implements Formattable {
       if (value === undefined) {
         throw new Error(`Signal ${name} not found in architecture`);
       }
-      const valueStr = value.current instanceof UnknownValue ? "" : ` = ${value.current.toString()}`;
+      const valueStr =
+        value.current === UnknownValue
+          ? ""
+          : ` = ${value.current.toString()}`;
       lines.push(`${indent}signal ${name}: ${type.toString()}${valueStr};`);
     }
     return lines.join("\n");
+  }
+
+  public getSignal(name: string): ProjectedValue {
+    const value = this.signalValues.get(name);
+    if (!value) {
+      throw new Error(`Signal ${name} not found in architecture`);
+    }
+    return value;
   }
 
   public toString(fmt?: FmtContext): string {

@@ -25,9 +25,13 @@ export abstract class BaseValue<T> implements Formattable {
     }
     return false;
   }
+
+  commit(): boolean {
+    return false;
+  }
 }
 
-export class ProjectedValue<T> {
+export class ProjectedValue<T = any> {
   public current: BaseValue<T>;
   public projected: BaseValue<T> | null = null;
 
@@ -37,21 +41,27 @@ export class ProjectedValue<T> {
 
   setProjected(projected: BaseValue<T>) {
     if (this.projected !== null) {
-      this.projected = new UnknownValue();
+      this.projected = UnknownValue;
     } else {
       this.projected = projected;
     }
   }
 
-  commit() {
+  commit(): boolean {
     if (this.projected !== null) {
+      if (this.current.equals(this.projected)) {
+        this.projected = null;
+        return false;
+      }
       this.current = this.projected;
       this.projected = null;
+      return true;
     }
+    return this.current.commit();
   }
 }
 
-export class UnknownValue extends BaseValue<any> {
+export const UnknownValue = new class extends BaseValue<any> {
   constructor() {
     super(unknownValue);
   }
@@ -107,32 +117,56 @@ export class StringValue extends BaseValue<string> {
   }
 }
 
-export class ArrayValue<T extends BaseValue<any>> extends BaseValue<T[]> {
+export class ArrayValue<T extends BaseValue<any>> extends BaseValue<ProjectedValue<T>[]> {
   constructor(
-    public type: ArrayType,
     values: T[],
   ) {
-    super(values);
-    if (values.length !== type.length) {
-      throw new Error(
-        `Array length mismatch: expected ${type.length}, got ${values.length}`,
-      );
-    }
+    super(values.map((v) => new ProjectedValue(v)));
+    const type = values[0]?.getType() || UnknownType;
     for (const value of values) {
-      if (!value.getType().equals(type.elementType)) {
+      if (!type.isType(value)) {
         throw new Error(
-          `Array element type mismatch: expected ${type.elementType.toString()}, got ${value.getType().toString()}`,
+          `Array element type mismatch: expected ${type.toString()}, got ${value.getType().toString()}`,
         );
       }
     }
   }
 
   getType(): BaseType {
-    return this.type;
+    if (this.value.length === 0) {
+      return new ArrayType(UnknownType, 0, -1);
+    }
+    const elementType = this.value[0]!.current.getType();
+    return new ArrayType(elementType, 0, this.value.length - 1);
   }
 
   toString(): string {
-    const elements = this.value.map((v) => v.toString()).join(", ");
+    const elements = this.value.map((v) => v.current.toString()).join(", ");
     return `[${elements}]`;
+  }
+
+  override equals(other: BaseValue<any>): boolean {
+    if (other instanceof ArrayValue) {
+      if (this.value.length !== other.value.length) {
+        return false;
+      }
+      for (let i = 0; i < this.value.length; i++) {
+        if (!this.value[i]!.current.equals(other.value[i]!.current)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    return false;
+  }
+
+  override commit(): boolean {
+    let changed = false;
+    for (const element of this.value) {
+      if (element.commit()) {
+        changed = true;
+      }
+    }
+    return changed;
   }
 }

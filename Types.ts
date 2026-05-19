@@ -1,5 +1,11 @@
 import type { Formattable } from "./Formattable";
-import { BitValue, IntValue, StringValue, type BaseValue } from "./Values";
+import {
+  ArrayValue,
+  BitValue,
+  IntValue,
+  StringValue,
+  type BaseValue,
+} from "./Values";
 
 export abstract class BaseType implements Formattable {
   abstract toString(): string;
@@ -11,8 +17,11 @@ export abstract class BaseType implements Formattable {
   }
 }
 
-function primitiveType<T>(name: string, check: (value: BaseValue<T>) => boolean): BaseType {
-  return new class extends BaseType {
+function primitiveType<T>(
+  name: string,
+  check: (value: BaseValue<T>) => boolean,
+): BaseType {
+  return new (class extends BaseType {
     toString(): string {
       return name;
     }
@@ -20,13 +29,22 @@ function primitiveType<T>(name: string, check: (value: BaseValue<T>) => boolean)
     isType(value: BaseValue<any>): boolean {
       return check(value);
     }
-  };
+  })();
 }
 
 export const UnknownType = primitiveType<any>("unknown", () => true);
-export const BitType = primitiveType<boolean>("bit", (value) => value instanceof BitValue);
-export const IntType = primitiveType<number>("int", (value) => value instanceof IntValue);
-export const StringType = primitiveType<string>("string", (value) => value instanceof StringValue);
+export const BitType = primitiveType<boolean>(
+  "bit",
+  (value) => value instanceof BitValue,
+);
+export const IntType = primitiveType<number>(
+  "int",
+  (value) => value instanceof IntValue,
+);
+export const StringType = primitiveType<string>(
+  "string",
+  (value) => value instanceof StringValue,
+);
 
 export class ArrayType extends BaseType {
   constructor(
@@ -43,10 +61,15 @@ export class ArrayType extends BaseType {
   }
 
   override isType(value: any): boolean {
-    if (Array.isArray(value) && value.length === this.length) {
-      return value.every((v) => this.elementType.isType(v));
-    }
-    return false;
+    if (!(value instanceof ArrayValue)) return false;
+
+    const type = value.getType();
+    if (!(type instanceof ArrayType)) return false;
+
+    if (this.length !== type.length) return false;
+    if (!this.elementType.equals(type.elementType)) return false;
+
+    return true;
   }
 
   toString(): string {
