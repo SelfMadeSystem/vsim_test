@@ -71,6 +71,32 @@ export abstract class BinaryOperator implements Formattable {
       return "OR";
     }
   })();
+
+  static XOR: BinaryOperator = new (class extends BinaryOperator {
+    apply(left: BaseValue<any>, right: BaseValue<any>): BaseValue<any> {
+      if (!BitType.isType(left) || !BitType.isType(right)) {
+        throw new Error(`XOR operator requires bit values. Got ${left.getType().toString()} and ${right.getType().toString()}`);
+      }
+      return new BitValue((left.value as boolean) !== (right.value as boolean));
+    }
+
+    toString(fmt?: FmtContext): string {
+      return "XOR";
+    }
+  })();
+
+  static NAND: BinaryOperator = new (class extends BinaryOperator {
+    apply(left: BaseValue<any>, right: BaseValue<any>): BaseValue<any> {
+      if (!BitType.isType(left) || !BitType.isType(right)) {
+        throw new Error(`NAND operator requires bit values. Got ${left.getType().toString()} and ${right.getType().toString()}`);
+      }
+      return new BitValue(!((left.value as boolean) && (right.value as boolean)));
+    }
+
+    toString(fmt?: FmtContext): string {
+      return "NAND";
+    }
+  })();
 }
 
 export class BinaryExpression extends Expression {

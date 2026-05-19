@@ -11,6 +11,8 @@ export class Architecture implements Formattable {
   public signalValues: Map<string, ProjectedValue> = new Map();
   public concurrentStatements: ConcurrentStatement[] = [];
   public deltaChange: boolean = false;
+  public step: number = 0;
+  public lastDeltaCount = 0;
 
   constructor(name: string) {
     this.name = name;
@@ -57,6 +59,12 @@ export class Architecture implements Formattable {
         throw new Error("Simulation did not converge after 1000 iterations");
       }
     } while (this.deltaChange);
+    this.lastDeltaCount = i;
+    this.step++;
+  }
+
+  stepString() {
+    return `Time: ${this.step * 10} ns (Delta steps: ${this.lastDeltaCount})`;
   }
 
   private execute() {
@@ -81,9 +89,7 @@ export class Architecture implements Formattable {
         throw new Error(`Signal ${name} not found in architecture`);
       }
       const valueStr =
-        value.current === UnknownValue
-          ? ""
-          : ` = ${value.current.toString()}`;
+        value.current === UnknownValue ? "" : ` = ${value.current.toString()}`;
       lines.push(`${indent}signal ${name}: ${type.toString()}${valueStr};`);
     }
     return lines.join("\n");

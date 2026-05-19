@@ -3,52 +3,48 @@ import { SignalAssignment } from "./ConcurrentStatement";
 import {
   BinaryExpression,
   BinaryOperator,
-  LiteralExpression,
   SignalExpression,
 } from "./Expression";
-import { IndexedTarget, SignalTarget } from "./Target";
-import { ArrayType, BitType } from "./Types";
-import { ArrayValue, BitValue, IntValue } from "./Values";
+import { SignalTarget as NamedTarget } from "./Target";
+import { BitType } from "./Types";
+import { BitValue } from "./Values";
 
 const arch = new Architecture("TestArch");
-arch.addSignalDef(
-  "a",
-  new ArrayType(BitType, 0, 3),
-  new ArrayValue([
-    new BitValue(1),
-    new BitValue(0),
-    new BitValue(0),
-    new BitValue(0),
-  ]),
-);
-arch.addSignalDef(
-  "b",
-  BitType,
-  new BitValue(0),
-);
+arch.addSignalDef("a", BitType, new BitValue(0));
+arch.addSignalDef("b", BitType, new BitValue(1));
+arch.addSignalDef("c", BitType, new BitValue(0));
+
+// a <= b | c
 arch.addConcurrentStatement(
   new SignalAssignment(
-    new SignalTarget("b"),
+    new NamedTarget("a"),
     new BinaryExpression(
-      new SignalExpression(new SignalTarget("b")),
+      new SignalExpression(new NamedTarget("b")),
       BinaryOperator.OR,
-      new BinaryExpression(
-        new LiteralExpression(new BitValue(1)),
-        BinaryOperator.AND,
-        new SignalExpression(
-          new IndexedTarget(
-            new SignalTarget("a"),
-            new LiteralExpression(new IntValue(0)),
-          ),
-        ),
-      ),
+      new SignalExpression(new NamedTarget("c")),
     ),
   ),
 );
 
+// b <= a
+arch.addConcurrentStatement(
+  new SignalAssignment(
+    new NamedTarget("b"),
+    new SignalExpression(new NamedTarget("a")),
+  ),
+);
+
+// c <= b
+arch.addConcurrentStatement(
+  new SignalAssignment(
+    new NamedTarget("c"),
+    new SignalExpression(new NamedTarget("b")),
+  ),
+);
+
 console.log(arch.toString({ indentLevel: 0 }));
-console.log("Run 0");
+console.log(arch.stepString());
 console.log(arch.signalsToString());
 arch.run();
-console.log("Run 1");
+console.log(arch.stepString());
 console.log(arch.signalsToString());
