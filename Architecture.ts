@@ -6,7 +6,12 @@ import { getIndent, indentCtx, type FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import type { Target } from "./Target";
 import type { BaseType } from "./Types";
-import { OutProjectedValue, ProjectedValue, UnknownValue, type BaseValue } from "./Values";
+import {
+  OutProjectedValue,
+  ProjectedValue,
+  UnknownValue,
+  type BaseValue,
+} from "./Values";
 
 export class Architecture implements Formattable, Cloneable {
   public signalTypes: Map<string, BaseType> = new Map();
@@ -58,16 +63,21 @@ export class Architecture implements Formattable, Cloneable {
     return this.deltaChange;
   }
 
-  private execute() {
+  execute() {
     for (const statement of this.concurrentStatements) {
       statement.run(this);
     }
   }
 
-  private commit() {
-    for (const [, projectedValue] of [...this.signalValues, ...this.ephemeralValues]) {
-      if (projectedValue.projected === null) continue;
+  commit() {
+    for (const [, projectedValue] of [
+      ...this.signalValues,
+      ...this.ephemeralValues,
+    ]) {
       if (projectedValue.commit()) this.deltaChange = true;
+    }
+    for (const statement of this.concurrentStatements) {
+      if (statement.commit(this)) this.deltaChange = true;
     }
   }
 

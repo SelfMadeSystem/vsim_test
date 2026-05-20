@@ -142,7 +142,7 @@ export class StringValue extends BaseValue<string> {
   }
 
   toString(): string {
-    return `"${this.value.replace(/"/g, '\\"')}"`;
+    return this.value;
   }
 
   clone(): this {

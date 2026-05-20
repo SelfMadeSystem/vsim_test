@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "bun:test";
-import { SignalTarget, IndexedTarget } from "./Target";
+import { NamedTarget, IndexedTarget } from "./Target";
 import { LiteralExpression } from "./Expression";
 import { Architecture } from "./Architecture";
 import { Entity, InPort, OutPort } from "./Entity";
@@ -20,33 +20,33 @@ describe("Target Classes", () => {
 
   describe("SignalTarget", () => {
     it("should create with signal name", () => {
-      const target = new SignalTarget("mySignal");
-      expect(target.signalName).toBe("mySignal");
+      const target = new NamedTarget("mySignal");
+      expect(target.targetName).toBe("mySignal");
     });
 
     it("should get value from architecture", () => {
       const value = new BitValue(true);
       arch.signalValues.set("test", new ProjectedValue(value));
-      const target = new SignalTarget("test");
+      const target = new NamedTarget("test");
       const retrieved = target.getValue(arch);
       expect(retrieved.current.value).toBe(true);
     });
 
     it("should throw error for non-existent signal", () => {
-      const target = new SignalTarget("nonexistent");
+      const target = new NamedTarget("nonexistent");
       expect(() => target.getValue(arch)).toThrow(
         "Signal nonexistent not found in architecture",
       );
     });
 
     it("should format as signal name", () => {
-      const target = new SignalTarget("mySignal");
+      const target = new NamedTarget("mySignal");
       expect(target.toString()).toBe("mySignal");
     });
 
     it("should work with input ports", () => {
       arch.signalValues.set("a", new ProjectedValue(new BitValue(false)));
-      const target = new SignalTarget("a");
+      const target = new NamedTarget("a");
       const value = target.getValue(arch);
       expect(value.current.value).toBe(false);
     });
@@ -67,7 +67,7 @@ describe("Target Classes", () => {
     });
 
     it("should create with base target and index expression", () => {
-      const base = new SignalTarget("myArray");
+      const base = new NamedTarget("myArray");
       const index = new LiteralExpression(new IntValue(0));
       const target = new IndexedTarget(base, index);
       expect(target.base).toBe(base);
@@ -75,7 +75,7 @@ describe("Target Classes", () => {
     });
 
     it("should get indexed value from array", () => {
-      const base = new SignalTarget("myArray");
+      const base = new NamedTarget("myArray");
       const index = new LiteralExpression(new IntValue(0));
       const target = new IndexedTarget(base, index);
       const value = target.getValue(arch);
@@ -83,7 +83,7 @@ describe("Target Classes", () => {
     });
 
     it("should get different values at different indices", () => {
-      const base = new SignalTarget("myArray");
+      const base = new NamedTarget("myArray");
       const target0 = new IndexedTarget(
         base,
         new LiteralExpression(new IntValue(0)),
@@ -97,7 +97,7 @@ describe("Target Classes", () => {
     });
 
     it("should throw error for out of bounds index", () => {
-      const base = new SignalTarget("myArray");
+      const base = new NamedTarget("myArray");
       const index = new LiteralExpression(new IntValue(99));
       const target = new IndexedTarget(base, index);
       expect(() => target.getValue(arch)).toThrow(
@@ -106,7 +106,7 @@ describe("Target Classes", () => {
     });
 
     it("should format as 'base(index)'", () => {
-      const base = new SignalTarget("myArray");
+      const base = new NamedTarget("myArray");
       const index = new LiteralExpression(new IntValue(2));
       const target = new IndexedTarget(base, index);
       expect(target.toString()).toBe("myArray(2)");
@@ -115,7 +115,7 @@ describe("Target Classes", () => {
     it("should throw error if base is not an array", () => {
       arch.signalTypes.set("scalar", BitType);
       arch.signalValues.set("scalar", new ProjectedValue(new BitValue(true)));
-      const base = new SignalTarget("scalar");
+      const base = new NamedTarget("scalar");
       const index = new LiteralExpression(new IntValue(0));
       const target = new IndexedTarget(base, index);
       expect(() => target.getValue(arch)).toThrow(
@@ -124,7 +124,7 @@ describe("Target Classes", () => {
     });
 
     it("should throw error if index is not integer", () => {
-      const base = new SignalTarget("myArray");
+      const base = new NamedTarget("myArray");
       const index = new LiteralExpression(new BitValue(true));
       const target = new IndexedTarget(base, index);
       expect(() => target.getValue(arch)).toThrow(

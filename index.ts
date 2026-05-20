@@ -1,17 +1,22 @@
 import { Architecture } from "./Architecture";
 import { Component } from "./Component";
-import { SignalAssignment } from "./ConcurrentStatement";
+import {
+  SignalAssignment,
+  PortMapStatement,
+  PrintStatement,
+} from "./ConcurrentStatement";
 import { Entity, InPort, OutPort } from "./Entity";
 import {
   BinaryExpression,
   BinaryOperator,
   SignalExpression,
 } from "./Expression";
-import { SignalTarget as NamedTarget } from "./Target";
+import { PortMap } from "./PortMap";
+import { NamedTarget as NamedTarget } from "./Target";
 import { BitType } from "./Types";
-import { BitValue, ProjectedValue } from "./Values";
+import { BitValue, ProjectedValue, StringValue } from "./Values";
 
-const entity = new Entity("FullAdder", [
+const fullAdder = new Entity("FullAdder", [
   new InPort("a", BitType),
   new InPort("b", BitType),
   new InPort("carryIn", BitType),
@@ -19,7 +24,7 @@ const entity = new Entity("FullAdder", [
   new OutPort("carryOut", BitType),
 ]);
 
-const arch = new Architecture("Behavioral", entity);
+const fullAdderArch = new Architecture("FullAdderBehavioral", fullAdder);
 
 const a = new SignalExpression(new NamedTarget("a"));
 const b = new SignalExpression(new NamedTarget("b"));
@@ -28,7 +33,7 @@ const sum = new NamedTarget("sum");
 const carryOut = new NamedTarget("carryOut");
 
 // sum <= a XOR b XOR carryIn;
-arch.addConcurrentStatement(
+fullAdderArch.addConcurrentStatement(
   new SignalAssignment(
     sum,
     new BinaryExpression(
@@ -40,7 +45,7 @@ arch.addConcurrentStatement(
 );
 
 // carryOut <= (a AND b) OR (carryIn AND (a XOR b));
-arch.addConcurrentStatement(
+fullAdderArch.addConcurrentStatement(
   new SignalAssignment(
     carryOut,
     new BinaryExpression(
@@ -55,32 +60,43 @@ arch.addConcurrentStatement(
   ),
 );
 
-entity.addArchitecture(arch);
+fullAdder.addArchitecture(fullAdderArch);
 
-const bits: [boolean, boolean, boolean] = [false, false, false];
+const testBench = new Entity("TestBench", []);
+const testBenchArch = new Architecture("TestBenchArch", testBench);
 
-const component = new Component(
-  entity,
-  new Map([
-    ["a", () => new ProjectedValue(new BitValue(bits[0]))],
-    ["b", () => new ProjectedValue(new BitValue(bits[1]))],
-    ["carryIn", () => new ProjectedValue(new BitValue(bits[2]))],
-  ]),
-  new Map([
-    ["sum", (val) => console.log(`sum: ${val.toString()}`)],
-    ["carryOut", (val) => console.log(`carryOut: ${val.toString()}`)],
-  ]),
+testBenchArch.addSignalDef("a", BitType, new BitValue(true));
+testBenchArch.addSignalDef("b", BitType, new BitValue(true));
+testBenchArch.addSignalDef("carryIn", BitType, new BitValue(true));
+testBenchArch.addSignalDef("sum", BitType, new BitValue(false));
+testBenchArch.addSignalDef("carryOut", BitType, new BitValue(false));
+
+testBenchArch.addConcurrentStatement(
+  new PortMapStatement(
+    new PortMap(
+      fullAdder,
+      new Map([
+        ["a", new NamedTarget("a")],
+        ["b", new NamedTarget("b")],
+        ["carryIn", new NamedTarget("carryIn")],
+        ["sum", new NamedTarget("sum")],
+        ["carryOut", new NamedTarget("carryOut")],
+      ]),
+    ),
+  ),
+);
+testBenchArch.addConcurrentStatement(
+  new PrintStatement(
+    new BinaryExpression(
+      new SignalExpression(new NamedTarget("sum")),
+      BinaryOperator.AMPERSAND,
+      new SignalExpression(new NamedTarget("carryOut")),
+    ),
+  ),
 );
 
-const sim = arch.withComponent(component);
+testBench.addArchitecture(testBenchArch);
 
-console.log(entity.toString({ indentLevel: 0 }));
-
-// Test all combinations of inputs
-for (let i = 0; i < 8; i++) {
-  bits[0] = (i & 0b100) !== 0;
-  bits[1] = (i & 0b010) !== 0;
-  bits[2] = (i & 0b001) !== 0;
-  console.log(`Testing: a=${bits[0]} b=${bits[1]} carryIn=${bits[2]}`);
-  sim.step();
-}
+console.log(testBench.toString({ indentLevel: 0 }));
+testBenchArch.step();
+testBenchArch.step();

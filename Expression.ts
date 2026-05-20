@@ -2,8 +2,8 @@ import type { Architecture } from "./Architecture";
 import type { FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import type { Target } from "./Target";
-import { BitType } from "./Types";
-import { BitValue, type BaseValue } from "./Values";
+import { BitType, IntType, StringType } from "./Types";
+import { BitValue, IntValue, StringValue, UnknownValue, type BaseValue } from "./Values";
 
 export abstract class Expression implements Formattable {
   abstract evaluate(architecture: Architecture): BaseValue<any>;
@@ -46,57 +46,95 @@ export abstract class BinaryOperator implements Formattable {
   abstract apply(left: BaseValue<any>, right: BaseValue<any>): BaseValue<any>;
   abstract toString(fmt?: FmtContext): string;
 
-  static AND: BinaryOperator = new (class extends BinaryOperator {
-    apply(left: BaseValue<any>, right: BaseValue<any>): BaseValue<any> {
-      if (!BitType.isType(left) || !BitType.isType(right)) {
-        throw new Error(`AND operator requires bit values. Got ${left.getType().toString()} and ${right.getType().toString()}`);
+  static makeOperator(
+    symbol: string,
+    applyFunc: (left: BaseValue<any>, right: BaseValue<any>) => BaseValue<any>,
+  ): BinaryOperator {
+    return new (class extends BinaryOperator {
+      apply(left: BaseValue<any>, right: BaseValue<any>): BaseValue<any> {
+        return applyFunc(left, right);
       }
+
+      toString(fmt?: FmtContext): string {
+        return symbol;
+      }
+    })();
+  }
+
+  static AND = this.makeOperator("AND", (left, right) => {
+    if (left === UnknownValue || right === UnknownValue) {
+      console.warn(`AND operator received unknown value.`);
+      return UnknownValue;
+    }
+    if (BitType.isType(left) && BitType.isType(right)) {
       return new BitValue((left.value as boolean) && (right.value as boolean));
     }
-
-    toString(fmt?: FmtContext): string {
-      return "AND";
+    if (IntType.isType(left) && IntType.isType(right)) {
+      return new IntValue((left.value as number) & (right.value as number));
     }
-  })();
+    throw new Error(
+      `AND operator requires bit or int values. Got ${left.getType().toString()} and ${right.getType().toString()}`,
+    );
+  });
 
-  static OR: BinaryOperator = new (class extends BinaryOperator {
-    apply(left: BaseValue<any>, right: BaseValue<any>): BaseValue<any> {
-      if (!BitType.isType(left) || !BitType.isType(right)) {
-        throw new Error(`OR operator requires bit values. Got ${left.getType().toString()} and ${right.getType().toString()}`);
-      }
+  static OR = this.makeOperator("OR", (left, right) => {
+    if (left === UnknownValue || right === UnknownValue) {
+      console.warn(`OR operator received unknown value.`);
+      return UnknownValue;
+    }
+    if (BitType.isType(left) && BitType.isType(right)) {
       return new BitValue((left.value as boolean) || (right.value as boolean));
     }
-
-    toString(fmt?: FmtContext): string {
-      return "OR";
+    if (IntType.isType(left) && IntType.isType(right)) {
+      return new IntValue((left.value as number) | (right.value as number));
     }
-  })();
+    throw new Error(
+      `OR operator requires bit or int values. Got ${left.getType().toString()} and ${right.getType().toString()}`,
+    );
+  });
 
-  static XOR: BinaryOperator = new (class extends BinaryOperator {
-    apply(left: BaseValue<any>, right: BaseValue<any>): BaseValue<any> {
-      if (!BitType.isType(left) || !BitType.isType(right)) {
-        throw new Error(`XOR operator requires bit values. Got ${left.getType().toString()} and ${right.getType().toString()}`);
-      }
-      return new BitValue((left.value as boolean) !== (right.value as boolean));
+  static XOR = this.makeOperator("XOR", (left, right) => {
+    if (left === UnknownValue || right === UnknownValue) {
+      console.warn(`XOR operator received unknown value.`);
+      return UnknownValue;
     }
+    if (BitType.isType(left) && BitType.isType(right)) {
+      return new BitValue(
+        (left.value as boolean) !== (right.value as boolean),
+      );
+    }
+    if (IntType.isType(left) && IntType.isType(right)) {
+      return new IntValue((left.value as number) ^ (right.value as number));
+    }
+    throw new Error(
+      `XOR operator requires bit or int values. Got ${left.getType().toString()} and ${right.getType().toString()}`,
+    );
+  });
 
-    toString(fmt?: FmtContext): string {
-      return "XOR";
+  static NAND = this.makeOperator("NAND", (left, right) => {
+    if (left === UnknownValue || right === UnknownValue) {
+      console.warn(`NAND operator received unknown value.`);
+      return UnknownValue;
     }
-  })();
+    if (BitType.isType(left) && BitType.isType(right)) {
+      return new BitValue(
+        !((left.value as boolean) && (right.value as boolean)),
+      );
+    }
+    if (IntType.isType(left) && IntType.isType(right)) {
+      return new IntValue(~((left.value as number) & (right.value as number)));
+    }
+    throw new Error(
+      `NAND operator requires bit or int values. Got ${left.getType().toString()} and ${right.getType().toString()}`,
+    );
+  });
 
-  static NAND: BinaryOperator = new (class extends BinaryOperator {
-    apply(left: BaseValue<any>, right: BaseValue<any>): BaseValue<any> {
-      if (!BitType.isType(left) || !BitType.isType(right)) {
-        throw new Error(`NAND operator requires bit values. Got ${left.getType().toString()} and ${right.getType().toString()}`);
-      }
-      return new BitValue(!((left.value as boolean) && (right.value as boolean)));
-    }
-
-    toString(fmt?: FmtContext): string {
-      return "NAND";
-    }
-  })();
+  static AMPERSAND = this.makeOperator("&", (left, right) => {
+    // For simplicity sake, let's convert both to strings and concatenate
+    const leftVal = left === UnknownValue ? "unknown" : left.toString();
+    const rightVal = right === UnknownValue ? "unknown" : right.toString();
+    return new StringValue(leftVal + rightVal);
+  });
 }
 
 export class BinaryExpression extends Expression {
@@ -126,7 +164,9 @@ export abstract class UnaryOperator implements Formattable {
   static NOT: UnaryOperator = new (class extends UnaryOperator {
     apply(operand: BaseValue<any>): BaseValue<any> {
       if (!BitType.isType(operand)) {
-        throw new Error(`NOT operator requires bit value. Got ${operand.getType().toString()}`);
+        throw new Error(
+          `NOT operator requires bit value. Got ${operand.getType().toString()}`,
+        );
       }
       return new BitValue(!(operand.value as boolean));
     }
@@ -156,7 +196,10 @@ export class UnaryExpression extends Expression {
 }
 
 export class IndexExpression extends Expression {
-  constructor(public array: Expression, public index: Expression) {
+  constructor(
+    public array: Expression,
+    public index: Expression,
+  ) {
     super();
   }
 

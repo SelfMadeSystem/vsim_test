@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { SignalAssignment } from "./ConcurrentStatement";
-import { SignalTarget } from "./Target";
+import { NamedTarget } from "./Target";
 import {
   SignalExpression,
   LiteralExpression,
@@ -31,7 +31,7 @@ describe("ConcurrentStatement", () => {
 
   describe("SignalAssignment", () => {
     it("should create assignment with target and expression", () => {
-      const target = new SignalTarget("result");
+      const target = new NamedTarget("result");
       const expr = new LiteralExpression(new BitValue(true));
       const assignment = new SignalAssignment(target, expr);
       expect(assignment.target).toBe(target);
@@ -39,7 +39,7 @@ describe("ConcurrentStatement", () => {
     });
 
     it("should assign literal value to signal", () => {
-      const target = new SignalTarget("temp");
+      const target = new NamedTarget("temp");
       const expr = new LiteralExpression(new BitValue(true));
       const assignment = new SignalAssignment(target, expr);
       assignment.run(arch);
@@ -49,8 +49,8 @@ describe("ConcurrentStatement", () => {
     });
 
     it("should assign signal value to signal", () => {
-      const target = new SignalTarget("temp");
-      const expr = new SignalExpression(new SignalTarget("a")); // a is true
+      const target = new NamedTarget("temp");
+      const expr = new SignalExpression(new NamedTarget("a")); // a is true
       const assignment = new SignalAssignment(target, expr);
       assignment.run(arch);
 
@@ -60,11 +60,11 @@ describe("ConcurrentStatement", () => {
 
     it("should assign expression result to signal", () => {
       // temp <= a AND b (true AND false = false)
-      const target = new SignalTarget("temp");
+      const target = new NamedTarget("temp");
       const expr = new BinaryExpression(
-        new SignalExpression(new SignalTarget("a")),
+        new SignalExpression(new NamedTarget("a")),
         BinaryOperator.AND,
-        new SignalExpression(new SignalTarget("b")),
+        new SignalExpression(new NamedTarget("b")),
       );
       const assignment = new SignalAssignment(target, expr);
       assignment.run(arch);
@@ -74,7 +74,7 @@ describe("ConcurrentStatement", () => {
     });
 
     it("should format assignment correctly", () => {
-      const target = new SignalTarget("result");
+      const target = new NamedTarget("result");
       const expr = new LiteralExpression(new BitValue(true));
       const assignment = new SignalAssignment(target, expr);
       const str = assignment.toString();
@@ -85,16 +85,16 @@ describe("ConcurrentStatement", () => {
 
     it("should handle complex expressions in assignment", () => {
       // temp <= (a XOR b) OR a (= (true XOR false) OR true = true OR true = true)
-      const target = new SignalTarget("temp");
+      const target = new NamedTarget("temp");
       const xorExpr = new BinaryExpression(
-        new SignalExpression(new SignalTarget("a")),
+        new SignalExpression(new NamedTarget("a")),
         BinaryOperator.XOR,
-        new SignalExpression(new SignalTarget("b")),
+        new SignalExpression(new NamedTarget("b")),
       );
       const orExpr = new BinaryExpression(
         xorExpr,
         BinaryOperator.OR,
-        new SignalExpression(new SignalTarget("a")),
+        new SignalExpression(new NamedTarget("a")),
       );
       const assignment = new SignalAssignment(target, orExpr);
       assignment.run(arch);
@@ -104,7 +104,7 @@ describe("ConcurrentStatement", () => {
     });
 
     it("should overwrite previous projected value", () => {
-      const target = new SignalTarget("temp");
+      const target = new NamedTarget("temp");
       const assignment1 = new SignalAssignment(
         target,
         new LiteralExpression(new BitValue(true)),

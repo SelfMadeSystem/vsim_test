@@ -3,7 +3,7 @@ import { Architecture } from "./Architecture";
 import { Entity, InPort, OutPort } from "./Entity";
 import { Component } from "./Component";
 import { SignalAssignment } from "./ConcurrentStatement";
-import { SignalTarget } from "./Target";
+import { NamedTarget } from "./Target";
 import {
   SignalExpression,
   LiteralExpression,
@@ -89,7 +89,7 @@ describe("Architecture", () => {
   describe("Concurrent Statements", () => {
     it("should add concurrent statement", () => {
       const stmt = new SignalAssignment(
-        new SignalTarget("result"),
+        new NamedTarget("result"),
         new LiteralExpression(new BitValue(true)),
       );
       arch.addConcurrentStatement(stmt);
@@ -103,14 +103,14 @@ describe("Architecture", () => {
 
       arch.addConcurrentStatement(
         new SignalAssignment(
-          new SignalTarget("temp"),
-          new SignalExpression(new SignalTarget("a")),
+          new NamedTarget("temp"),
+          new SignalExpression(new NamedTarget("a")),
         ),
       );
       arch.addConcurrentStatement(
         new SignalAssignment(
-          new SignalTarget("result"),
-          new SignalExpression(new SignalTarget("temp")),
+          new NamedTarget("result"),
+          new SignalExpression(new NamedTarget("temp")),
         ),
       );
 
@@ -131,11 +131,11 @@ describe("Architecture", () => {
       // sum <= a XOR b
       arch.addConcurrentStatement(
         new SignalAssignment(
-          new SignalTarget("sum"),
+          new NamedTarget("sum"),
           new BinaryExpression(
-            new SignalExpression(new SignalTarget("a")),
+            new SignalExpression(new NamedTarget("a")),
             BinaryOperator.XOR,
-            new SignalExpression(new SignalTarget("b")),
+            new SignalExpression(new NamedTarget("b")),
           ),
         ),
       );
@@ -149,7 +149,7 @@ describe("Architecture", () => {
       arch.signalValues.set("sum", new ProjectedValue(new BitValue(false)));
       arch.addConcurrentStatement(
         new SignalAssignment(
-          new SignalTarget("sum"),
+          new NamedTarget("sum"),
           new LiteralExpression(new BitValue(false)),
         ),
       );
@@ -165,17 +165,17 @@ describe("Architecture", () => {
 
       // sum <= a XOR b XOR carryIn
       const sumExpr = new BinaryExpression(
-        new SignalExpression(new SignalTarget("a")),
+        new SignalExpression(new NamedTarget("a")),
         BinaryOperator.XOR,
         new BinaryExpression(
-          new SignalExpression(new SignalTarget("b")),
+          new SignalExpression(new NamedTarget("b")),
           BinaryOperator.XOR,
-          new SignalExpression(new SignalTarget("carryIn")),
+          new SignalExpression(new NamedTarget("carryIn")),
         ),
       );
 
       arch.addConcurrentStatement(
-        new SignalAssignment(new SignalTarget("sum"), sumExpr),
+        new SignalAssignment(new NamedTarget("sum"), sumExpr),
       );
 
       arch.step();
@@ -223,7 +223,7 @@ describe("Architecture", () => {
       arch.signalValues.set("temp", new ProjectedValue(new BitValue(true)));
       arch.addConcurrentStatement(
         new SignalAssignment(
-          new SignalTarget("result"),
+          new NamedTarget("result"),
           new LiteralExpression(new BitValue(true)),
         ),
       );
@@ -253,7 +253,7 @@ describe("Architecture", () => {
       arch.addSignal("temp", BitType);
       arch.addConcurrentStatement(
         new SignalAssignment(
-          new SignalTarget("temp"),
+          new NamedTarget("temp"),
           new LiteralExpression(new BitValue(true)),
         ),
       );

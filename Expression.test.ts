@@ -6,7 +6,7 @@ import {
   BinaryOperator,
   BinaryExpression,
 } from "./Expression";
-import { SignalTarget } from "./Target";
+import { NamedTarget } from "./Target";
 import { Architecture } from "./Architecture";
 import { Entity, InPort, OutPort } from "./Entity";
 import { BitType } from "./Types";
@@ -49,20 +49,20 @@ describe("Expression Classes", () => {
 
   describe("SignalExpression", () => {
     it("should create with a target", () => {
-      const target = new SignalTarget("a");
+      const target = new NamedTarget("a");
       const expr = new SignalExpression(target);
       expect(expr.target).toBe(target);
     });
 
     it("should evaluate to signal value", () => {
-      const target = new SignalTarget("a");
+      const target = new NamedTarget("a");
       const expr = new SignalExpression(target);
       const result = expr.evaluate(arch);
       expect(result.value).toBe(true);
     });
 
     it("should throw error when signal not found", () => {
-      const target = new SignalTarget("nonexistent");
+      const target = new NamedTarget("nonexistent");
       const expr = new SignalExpression(target);
       expect(() => expr.evaluate(arch)).toThrow(
         "Signal nonexistent not found in architecture",
@@ -70,7 +70,7 @@ describe("Expression Classes", () => {
     });
 
     it("should format as target string", () => {
-      const target = new SignalTarget("mySignal");
+      const target = new NamedTarget("mySignal");
       const expr = new SignalExpression(target);
       expect(expr.toString()).toBe("mySignal");
     });
@@ -178,8 +178,8 @@ describe("Expression Classes", () => {
 
   describe("BinaryExpression", () => {
     it("should evaluate with two expressions", () => {
-      const left = new SignalExpression(new SignalTarget("a")); // true
-      const right = new SignalExpression(new SignalTarget("b")); // false
+      const left = new SignalExpression(new NamedTarget("a")); // true
+      const right = new SignalExpression(new NamedTarget("b")); // false
       const expr = new BinaryExpression(left, BinaryOperator.AND, right);
       const result = expr.evaluate(arch);
       expect(result.value).toBe(false);
@@ -188,9 +188,9 @@ describe("Expression Classes", () => {
     it("should evaluate nested expressions", () => {
       // a XOR b (true XOR false = true)
       const xorExpr = new BinaryExpression(
-        new SignalExpression(new SignalTarget("a")),
+        new SignalExpression(new NamedTarget("a")),
         BinaryOperator.XOR,
-        new SignalExpression(new SignalTarget("b")),
+        new SignalExpression(new NamedTarget("b")),
       );
       const result = xorExpr.evaluate(arch);
       expect(result.value).toBe(true);
@@ -209,9 +209,9 @@ describe("Expression Classes", () => {
     it("should handle complex nested expressions", () => {
       // (a AND b) OR (NOT b) = (true AND false) OR true = false OR true = true
       const andExpr = new BinaryExpression(
-        new SignalExpression(new SignalTarget("a")),
+        new SignalExpression(new NamedTarget("a")),
         BinaryOperator.AND,
-        new SignalExpression(new SignalTarget("b")),
+        new SignalExpression(new NamedTarget("b")),
       );
       const orExpr = new BinaryExpression(
         andExpr,

@@ -3,7 +3,7 @@ import { Architecture } from "./Architecture";
 import { Component } from "./Component";
 import { Entity, InPort, OutPort } from "./Entity";
 import { SignalAssignment } from "./ConcurrentStatement";
-import { SignalTarget } from "./Target";
+import { NamedTarget } from "./Target";
 import {
   SignalExpression,
   BinaryExpression,
@@ -52,14 +52,14 @@ describe("Integration: Full Adder Simulation", () => {
     // Define logic: sum <= a XOR b XOR carryIn
     arch.addConcurrentStatement(
       new SignalAssignment(
-        new SignalTarget("sum"),
+        new NamedTarget("sum"),
         new BinaryExpression(
-          new SignalExpression(new SignalTarget("a")),
+          new SignalExpression(new NamedTarget("a")),
           BinaryOperator.XOR,
           new BinaryExpression(
-            new SignalExpression(new SignalTarget("b")),
+            new SignalExpression(new NamedTarget("b")),
             BinaryOperator.XOR,
-            new SignalExpression(new SignalTarget("carryIn")),
+            new SignalExpression(new NamedTarget("carryIn")),
           ),
         ),
       ),
@@ -68,21 +68,21 @@ describe("Integration: Full Adder Simulation", () => {
     // Define logic: carryOut <= (a AND b) OR (carryIn AND (a XOR b))
     arch.addConcurrentStatement(
       new SignalAssignment(
-        new SignalTarget("carryOut"),
+        new NamedTarget("carryOut"),
         new BinaryExpression(
           new BinaryExpression(
-            new SignalExpression(new SignalTarget("a")),
+            new SignalExpression(new NamedTarget("a")),
             BinaryOperator.AND,
-            new SignalExpression(new SignalTarget("b")),
+            new SignalExpression(new NamedTarget("b")),
           ),
           BinaryOperator.OR,
           new BinaryExpression(
-            new SignalExpression(new SignalTarget("carryIn")),
+            new SignalExpression(new NamedTarget("carryIn")),
             BinaryOperator.AND,
             new BinaryExpression(
-              new SignalExpression(new SignalTarget("a")),
+              new SignalExpression(new NamedTarget("a")),
               BinaryOperator.XOR,
-              new SignalExpression(new SignalTarget("b")),
+              new SignalExpression(new NamedTarget("b")),
             ),
           ),
         ),
@@ -126,8 +126,8 @@ describe("Integration: Full Adder Simulation", () => {
     const archClone = arch.clone();
     archClone.addConcurrentStatement(
       new SignalAssignment(
-        new SignalTarget("sum"),
-        new SignalExpression(new SignalTarget("a")),
+        new NamedTarget("sum"),
+        new SignalExpression(new NamedTarget("a")),
       ),
     );
 
@@ -166,12 +166,12 @@ describe("Integration: Full Adder Simulation", () => {
     );
 
     const xorExpr = new BinaryExpression(
-      new SignalExpression(new SignalTarget("a")),
+      new SignalExpression(new NamedTarget("a")),
       BinaryOperator.XOR,
       new BinaryExpression(
-        new SignalExpression(new SignalTarget("b")),
+        new SignalExpression(new NamedTarget("b")),
         BinaryOperator.XOR,
-        new SignalExpression(new SignalTarget("carryIn")),
+        new SignalExpression(new NamedTarget("carryIn")),
       ),
     );
 
@@ -190,19 +190,19 @@ describe("Integration: Full Adder Simulation", () => {
     );
 
     const andExpr = new BinaryExpression(
-      new SignalExpression(new SignalTarget("a")),
+      new SignalExpression(new NamedTarget("a")),
       BinaryOperator.AND,
-      new SignalExpression(new SignalTarget("b")),
+      new SignalExpression(new NamedTarget("b")),
     ); // true AND false = false
 
     const xorExpr = new BinaryExpression(
-      new SignalExpression(new SignalTarget("a")),
+      new SignalExpression(new NamedTarget("a")),
       BinaryOperator.XOR,
-      new SignalExpression(new SignalTarget("b")),
+      new SignalExpression(new NamedTarget("b")),
     ); // true XOR false = true
 
     const carryAndExpr = new BinaryExpression(
-      new SignalExpression(new SignalTarget("carryIn")),
+      new SignalExpression(new NamedTarget("carryIn")),
       BinaryOperator.AND,
       xorExpr,
     ); // true AND true = true

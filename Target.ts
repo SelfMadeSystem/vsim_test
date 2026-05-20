@@ -9,17 +9,17 @@ export abstract class Target implements Formattable {
   abstract toString(fmt?: FmtContext): string;
 }
 
-export class SignalTarget extends Target {
-  constructor(public signalName: string) {
+export class NamedTarget extends Target {
+  constructor(public targetName: string) {
     super();
   }
 
   getValue(arch: Architecture): ProjectedValue {
-    return arch.getValue(this.signalName);
+    return arch.getValue(this.targetName);
   }
 
   toString(): string {
-    return this.signalName;
+    return this.targetName;
   }
 }
 
