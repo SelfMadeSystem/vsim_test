@@ -107,6 +107,23 @@ export class Architecture implements Formattable, Cloneable {
         return newEphemeral;
       }
     }
+    if (this.entity.outPorts.has(name)) {
+      const ephemeral = this.ephemeralValues.get(name);
+      if (ephemeral) {
+        return ephemeral;
+      }
+      const newEphemeral = new ProjectedValue(UnknownValue);
+      this.ephemeralValues.set(name, newEphemeral);
+      console.warn(
+        `Warning: Output port ${name} has no driver in architecture ${this.name}`,
+      );
+      return newEphemeral;
+    }
+    if (this.entity.inPorts.has(name)) {
+      throw new Error(
+        `Input port ${name} cannot be read directly from architecture ${this.name}`,
+      );
+    }
     throw new Error(`Signal ${name} not found in architecture`);
   }
 

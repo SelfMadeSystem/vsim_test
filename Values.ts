@@ -150,9 +150,9 @@ export class StringValue extends BaseValue<string> {
   }
 }
 
-export class ArrayValue<T extends BaseValue<any>> extends BaseValue<ProjectedValue<T>[]> {
+export class ArrayValue<T> extends BaseValue<ProjectedValue<T>[]> {
   constructor(
-    values: T[],
+    values: BaseValue<T>[],
   ) {
     super(values.map((v) => new ProjectedValue(v)));
     const type = values[0]?.getType() || UnknownType;
