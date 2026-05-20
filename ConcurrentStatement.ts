@@ -1,4 +1,3 @@
-import type { Architecture } from "./Architecture";
 import type { Cloneable } from "./Cloneable";
 import type { Expression } from "./Expression";
 import { getIndent, type FmtContext } from "./FmtContext";
@@ -13,6 +12,7 @@ export abstract class ConcurrentStatement implements Formattable, Cloneable {
     return false;
   }
   postCycle(scope: Scope): void {}
+  postStep(scope: Scope): void {}
   abstract toString(fmt?: FmtContext): string;
   abstract clone(): this;
 }
@@ -75,7 +75,7 @@ export class PrintStatement extends ConcurrentStatement {
 
   run(scope: Scope): void {}
 
-  override postCycle(scope: Scope): boolean {
+  override postStep(scope: Scope): boolean {
     console.log(this.message.evaluate(scope).value.toString());
     return false;
   }

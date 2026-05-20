@@ -66,6 +66,10 @@ export class Architecture implements Formattable, Cloneable {
     this.scope.postCycle();
   }
 
+  postStep() {
+    this.scope.postStep();
+  }
+
   public signalsToString(fmt?: FmtContext): string {
     const indent = getIndent(fmt);
     const lines = [];
