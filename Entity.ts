@@ -1,5 +1,5 @@
 import type { Architecture } from "./Architecture";
-import { getIndent, type FmtContext } from "./FmtContext";
+import { getIndent, indentCtx, type FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import type { BaseType } from "./Types";
 
@@ -57,5 +57,17 @@ export class Entity implements Formattable {
       );
     }
     this.architectures.set(arch.name, arch);
+  }
+
+  toString(fmt?: FmtContext): string {
+    const indent = getIndent(fmt);
+    const portsStr = [
+      ...Array.from(this.inPorts.values()).map((p) => p.toString()),
+      ...Array.from(this.outPorts.values()).filter((p) => !this.inPorts.has(p.name)).map((p) => p.toString()),
+    ].join(";\n  " + indent);
+    const archsStr = Array.from(this.architectures.values())
+      .map((a) => a.toString(fmt))
+      .join("\n\n" + indent);
+    return `entity ${this.name} is\n${indent}  ${portsStr};\nend entity;\n\n${archsStr}`;
   }
 }

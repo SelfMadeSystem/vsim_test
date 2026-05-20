@@ -74,6 +74,8 @@ const component = new Component(
 
 const sim = arch.withComponent(component);
 
+console.log(entity.toString({ indentLevel: 0 }));
+
 // Test all combinations of inputs
 for (let i = 0; i < 8; i++) {
   bits[0] = (i & 0b100) !== 0;
