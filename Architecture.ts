@@ -1,22 +1,25 @@
+import type { Cloneable } from "./Cloneable";
+import type { Component } from "./Component";
 import type { ConcurrentStatement } from "./ConcurrentStatement";
+import type { Entity } from "./Entity";
 import { getIndent, indentCtx, type FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import type { Target } from "./Target";
 import type { BaseType } from "./Types";
-import { ProjectedValue, UnknownValue, type BaseValue } from "./Values";
+import { OutProjectedValue, ProjectedValue, UnknownValue, type BaseValue } from "./Values";
 
-export class Architecture implements Formattable {
-  public name: string;
+export class Architecture implements Formattable, Cloneable {
   public signalTypes: Map<string, BaseType> = new Map();
   public signalValues: Map<string, ProjectedValue> = new Map();
   public concurrentStatements: ConcurrentStatement[] = [];
   public deltaChange: boolean = false;
-  public step: number = 0;
-  public lastDeltaCount = 0;
+  public component: Component | null = null;
+  private ephemeralValues: Map<string, ProjectedValue> = new Map();
 
-  constructor(name: string) {
-    this.name = name;
-  }
+  constructor(
+    public name: string,
+    public entity: Entity,
+  ) {}
 
   addSignal(name: string, type: BaseType) {
     if (this.signalTypes.has(name)) {
@@ -48,23 +51,11 @@ export class Architecture implements Formattable {
     projectedValue.setProjected(value);
   }
 
-  run() {
-    let i = 0;
-    do {
-      this.deltaChange = false;
-      this.execute();
-      this.commit();
-      i++;
-      if (i > 1000) {
-        throw new Error("Simulation did not converge after 1000 iterations");
-      }
-    } while (this.deltaChange);
-    this.lastDeltaCount = i;
-    this.step++;
-  }
-
-  stepString() {
-    return `Time: ${this.step * 10} ns (Delta steps: ${this.lastDeltaCount})`;
+  step(): boolean {
+    this.deltaChange = false;
+    this.execute();
+    this.commit();
+    return this.deltaChange;
   }
 
   private execute() {
@@ -74,7 +65,7 @@ export class Architecture implements Formattable {
   }
 
   private commit() {
-    for (const [, projectedValue] of this.signalValues) {
+    for (const [, projectedValue] of [...this.signalValues, ...this.ephemeralValues]) {
       if (projectedValue.projected === null) continue;
       if (projectedValue.commit()) this.deltaChange = true;
     }
@@ -95,28 +86,65 @@ export class Architecture implements Formattable {
     return lines.join("\n");
   }
 
-  public getSignal(name: string): ProjectedValue {
+  public getValue(name: string): ProjectedValue {
     const value = this.signalValues.get(name);
-    if (!value) {
-      throw new Error(`Signal ${name} not found in architecture`);
+    if (value) {
+      return value;
     }
-    return value;
+    if (this.component) {
+      const input = this.component.getInput(name);
+      if (input) {
+        return input;
+      }
+      const outCb = this.component.outCbs.get(name);
+      if (outCb) {
+        const ephemeral = this.ephemeralValues.get(name);
+        if (ephemeral) {
+          return ephemeral;
+        }
+        const newEphemeral = new OutProjectedValue(UnknownValue, outCb);
+        this.ephemeralValues.set(name, newEphemeral);
+        return newEphemeral;
+      }
+    }
+    throw new Error(`Signal ${name} not found in architecture`);
+  }
+
+  public withComponent(component: Component): Architecture {
+    const clone = this.clone();
+    clone.component = component;
+    return clone;
   }
 
   public toString(fmt?: FmtContext): string {
     const indent = getIndent(fmt);
     const lines = [];
+    const archStart = `${indent}architecture ${this.name} of ${this.entity.name}`;
     if (this.signalTypes.size > 0) {
-      lines.push(`${indent}architecture ${this.name} is`);
+      lines.push(`${archStart} is`);
       lines.push(this.signalsToString(indentCtx(fmt)));
       lines.push(`${indent}begin`);
     } else {
-      lines.push(`${indent}architecture ${this.name} begin`);
+      lines.push(`${archStart} begin`);
     }
     for (const statement of this.concurrentStatements) {
       lines.push(statement.toString(indentCtx(fmt)));
     }
     lines.push(`${indent}end ${this.name};`);
     return lines.join("\n");
+  }
+
+  clone(): this {
+    const clone = new Architecture(this.name, this.entity) as this;
+    for (const [name, type] of this.signalTypes) {
+      clone.signalTypes.set(name, type);
+    }
+    for (const [name, value] of this.signalValues) {
+      clone.signalValues.set(name, new ProjectedValue(value.current));
+    }
+    for (const statement of this.concurrentStatements) {
+      clone.concurrentStatements.push(statement);
+    }
+    return clone;
   }
 }

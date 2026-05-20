@@ -1,5 +1,7 @@
 import { Architecture } from "./Architecture";
+import { Component } from "./Component";
 import { SignalAssignment } from "./ConcurrentStatement";
+import { Entity, InPort, OutPort } from "./Entity";
 import {
   BinaryExpression,
   BinaryOperator,
@@ -7,44 +9,76 @@ import {
 } from "./Expression";
 import { SignalTarget as NamedTarget } from "./Target";
 import { BitType } from "./Types";
-import { BitValue } from "./Values";
+import { BitValue, ProjectedValue } from "./Values";
 
-const arch = new Architecture("TestArch");
-arch.addSignalDef("a", BitType, new BitValue(0));
-arch.addSignalDef("b", BitType, new BitValue(1));
-arch.addSignalDef("c", BitType, new BitValue(0));
+const entity = new Entity("FullAdder", [
+  new InPort("a", BitType),
+  new InPort("b", BitType),
+  new InPort("carryIn", BitType),
+  new OutPort("sum", BitType),
+  new OutPort("carryOut", BitType),
+]);
 
-// a <= b | c
+const arch = new Architecture("Behavioral", entity);
+
+const a = new SignalExpression(new NamedTarget("a"));
+const b = new SignalExpression(new NamedTarget("b"));
+const carryIn = new SignalExpression(new NamedTarget("carryIn"));
+const sum = new NamedTarget("sum");
+const carryOut = new NamedTarget("carryOut");
+
+// sum <= a XOR b XOR carryIn;
 arch.addConcurrentStatement(
   new SignalAssignment(
-    new NamedTarget("a"),
+    sum,
     new BinaryExpression(
-      new SignalExpression(new NamedTarget("b")),
-      BinaryOperator.OR,
-      new SignalExpression(new NamedTarget("c")),
+      a,
+      BinaryOperator.XOR,
+      new BinaryExpression(b, BinaryOperator.XOR, carryIn),
     ),
   ),
 );
 
-// b <= a
+// carryOut <= (a AND b) OR (carryIn AND (a XOR b));
 arch.addConcurrentStatement(
   new SignalAssignment(
-    new NamedTarget("b"),
-    new SignalExpression(new NamedTarget("a")),
+    carryOut,
+    new BinaryExpression(
+      new BinaryExpression(a, BinaryOperator.AND, b),
+      BinaryOperator.OR,
+      new BinaryExpression(
+        carryIn,
+        BinaryOperator.AND,
+        new BinaryExpression(a, BinaryOperator.XOR, b),
+      ),
+    ),
   ),
 );
 
-// c <= b
-arch.addConcurrentStatement(
-  new SignalAssignment(
-    new NamedTarget("c"),
-    new SignalExpression(new NamedTarget("b")),
-  ),
+entity.addArchitecture(arch);
+
+const bits: [boolean, boolean, boolean] = [false, false, false];
+
+const component = new Component(
+  entity,
+  new Map([
+    ["a", () => new ProjectedValue(new BitValue(bits[0]))],
+    ["b", () => new ProjectedValue(new BitValue(bits[1]))],
+    ["carryIn", () => new ProjectedValue(new BitValue(bits[2]))],
+  ]),
+  new Map([
+    ["sum", (val) => console.log(`sum: ${val.toString()}`)],
+    ["carryOut", (val) => console.log(`carryOut: ${val.toString()}`)],
+  ]),
 );
 
-console.log(arch.toString({ indentLevel: 0 }));
-console.log(arch.stepString());
-console.log(arch.signalsToString());
-arch.run();
-console.log(arch.stepString());
-console.log(arch.signalsToString());
+const sim = arch.withComponent(component);
+
+// Test all combinations of inputs
+for (let i = 0; i < 8; i++) {
+  bits[0] = (i & 0b100) !== 0;
+  bits[1] = (i & 0b010) !== 0;
+  bits[2] = (i & 0b001) !== 0;
+  console.log(`Testing: a=${bits[0]} b=${bits[1]} carryIn=${bits[2]}`);
+  sim.step();
+}

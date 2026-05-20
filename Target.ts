@@ -15,7 +15,7 @@ export class SignalTarget extends Target {
   }
 
   getValue(arch: Architecture): ProjectedValue {
-    return arch.getSignal(this.signalName);
+    return arch.getValue(this.signalName);
   }
 
   toString(): string {

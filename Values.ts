@@ -1,3 +1,4 @@
+import type { Cloneable } from "./Cloneable";
 import { unknownValue } from "./Consts";
 import type { Formattable } from "./Formattable";
 import {
@@ -9,7 +10,7 @@ import {
   UnknownType,
 } from "./Types";
 
-export abstract class BaseValue<T> implements Formattable {
+export abstract class BaseValue<T> implements Formattable, Cloneable {
   public value: T;
 
   constructor(value: T) {
@@ -29,6 +30,8 @@ export abstract class BaseValue<T> implements Formattable {
   commit(): boolean {
     return false;
   }
+
+  abstract clone(): this;
 }
 
 export class ProjectedValue<T = any> {
@@ -61,6 +64,20 @@ export class ProjectedValue<T = any> {
   }
 }
 
+export class OutProjectedValue<T = any> extends ProjectedValue<T> {
+  constructor(value: BaseValue<T>, public outCb: (value: BaseValue<T>) => void) {
+    super(value);
+  }
+
+  override commit(): boolean {
+    const changed = super.commit();
+    if (changed) {
+      this.outCb(this.current);
+    }
+    return changed;
+  }
+}
+
 export const UnknownValue = new class extends BaseValue<any> {
   constructor() {
     super(unknownValue);
@@ -72,6 +89,10 @@ export const UnknownValue = new class extends BaseValue<any> {
 
   toString(): string {
     return "x";
+  }
+
+  clone(): this {
+    return this;
   }
 }
 
@@ -87,6 +108,10 @@ export class BitValue extends BaseValue<boolean> {
   toString(): string {
     return this.value ? "1" : "0";
   }
+
+  clone(): this {
+    return new BitValue(this.value) as this;
+  }
 }
 
 export class IntValue extends BaseValue<number> {
@@ -101,6 +126,10 @@ export class IntValue extends BaseValue<number> {
   toString(): string {
     return this.value.toString();
   }
+
+  clone(): this {
+    return new IntValue(this.value) as this;
+  }
 }
 
 export class StringValue extends BaseValue<string> {
@@ -114,6 +143,10 @@ export class StringValue extends BaseValue<string> {
 
   toString(): string {
     return `"${this.value.replace(/"/g, '\\"')}"`;
+  }
+
+  clone(): this {
+    return new StringValue(this.value) as this;
   }
 }
 
@@ -168,5 +201,10 @@ export class ArrayValue<T extends BaseValue<any>> extends BaseValue<ProjectedVal
       }
     }
     return changed;
+  }
+
+  clone(): this {
+    const clonedElements = this.value.map((v) => new ProjectedValue(v.current.clone()));
+    return new ArrayValue(clonedElements.map((v) => v.current)) as this;
   }
 }
