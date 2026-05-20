@@ -4,11 +4,12 @@ import { Component } from "./Component";
 import type { Entity } from "./Entity";
 import { getIndent, type FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
-import { NamedTarget, Target } from "./Target";
+import type { Scope } from "./Scope";
+import { Target } from "./Target";
 
 export class PortMap implements Formattable, Cloneable {
   public component: Component;
-  public parentArchitecture: Architecture | null = null;
+  public scope: Scope | null = null;
   public entityArchitectures: Architecture[] = [];
 
   constructor(
@@ -26,12 +27,12 @@ export class PortMap implements Formattable, Cloneable {
             );
           }
           const cb = () => {
-            if (!this.parentArchitecture) {
+            if (!this.scope) {
               throw new Error(
-                `PortMap component input callback called before architecture is set`,
+                `PortMap component input callback called before scope is set`,
               );
             }
-            return mappedTarget.getValue(this.parentArchitecture!);
+            return mappedTarget.getValue(this.scope!);
           };
           return [portName, cb];
         }),
@@ -45,14 +46,14 @@ export class PortMap implements Formattable, Cloneable {
             );
           }
           const cb = (val: any) => {
-            if (!this.parentArchitecture) {
+            if (!this.scope) {
               console.warn(
-                `PortMap component output callback called before architecture is set`,
+                `PortMap component output callback called before scope is set`,
               );
               return;
             }
             if (!mappedTarget) return;
-            this.parentArchitecture.setProjectedValue(mappedTarget, val);
+            this.scope.setProjectedValue(mappedTarget, val);
           };
           return [portName, cb];
         }),

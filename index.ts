@@ -1,6 +1,6 @@
 import { Architecture } from "./Architecture";
 import {
-  SignalAssignment,
+  ConcurrentSignalAssignment,
   PortMapStatement,
   PrintStatement,
 } from "./ConcurrentStatement";
@@ -33,7 +33,7 @@ const carryOut = new NamedTarget("carryOut");
 
 // sum <= a XOR b XOR carryIn;
 fullAdderArch.addConcurrentStatement(
-  new SignalAssignment(
+  new ConcurrentSignalAssignment(
     sum,
     new BinaryExpression(
       a,
@@ -45,7 +45,7 @@ fullAdderArch.addConcurrentStatement(
 
 // carryOut <= (a AND b) OR (carryIn AND (a XOR b));
 fullAdderArch.addConcurrentStatement(
-  new SignalAssignment(
+  new ConcurrentSignalAssignment(
     carryOut,
     new BinaryExpression(
       new BinaryExpression(a, BinaryOperator.AND, b),

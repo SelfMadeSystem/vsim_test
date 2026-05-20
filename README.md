@@ -87,33 +87,6 @@ const sim = arch.withComponent(component);
 sim.step();
 ```
 
-## Testing
-
-This project includes comprehensive unit tests using **bun:test**:
-
-- **Entity.test.ts** - Port creation, entity management, validation
-- **Types.test.ts** - Type checking, array types, type equality
-- **Values.test.ts** - Value creation, cloning, equality, ProjectedValues
-- **Expression.test.ts** - Expression evaluation, binary operators
-- **Target.test.ts** - Signal targets, indexed targets, lookups
-- **Component.test.ts** - Component callbacks and port connections
-- **ConcurrentStatement.test.ts** - Signal assignments and execution
-- **Architecture.test.ts** - Simulation stepping, signal management, cloning
-- **FmtContext.test.ts** - Formatting context and indentation
-- **Integration.test.ts** - Full adder simulation end-to-end
-
-### Running Tests
-
-```bash
-# Run all tests
-bun test
-
-# Run specific test file
-bun test Entity.test.ts
-```
-
-All tests pass with comprehensive coverage across all modules.
-
 ## Getting Started
 
 ### Prerequisites

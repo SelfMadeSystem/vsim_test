@@ -1,20 +1,23 @@
 import type { Architecture } from "./Architecture";
+import type { Cloneable } from "./Cloneable";
 import type { Expression } from "./Expression";
 import { getIndent, type FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import type { PortMap } from "./PortMap";
+import type { Scope } from "./Scope";
 import type { Target } from "./Target";
 
-export abstract class ConcurrentStatement implements Formattable {
-  abstract run(architecture: Architecture): void;
-  commit(architecture: Architecture): boolean {
+export abstract class ConcurrentStatement implements Formattable, Cloneable {
+  abstract run(scope: Scope): void;
+  commit(scope: Scope): boolean {
     return false;
   }
-  postStep(architecture: Architecture): void {}
+  postStep(scope: Scope): void {}
   abstract toString(fmt?: FmtContext): string;
+  abstract clone(): this;
 }
 
-export class SignalAssignment extends ConcurrentStatement {
+export class ConcurrentSignalAssignment extends ConcurrentStatement {
   constructor(
     public target: Target,
     public expression: Expression,
@@ -22,14 +25,18 @@ export class SignalAssignment extends ConcurrentStatement {
     super();
   }
 
-  run(architecture: Architecture): void {
-    const value = this.expression.evaluate(architecture);
-    architecture.setProjectedValue(this.target, value);
+  run(scope: Scope): void {
+    const value = this.expression.evaluate(scope);
+    scope.setProjectedValue(this.target, value);
   }
 
   toString(fmt?: FmtContext): string {
     const indent = getIndent(fmt);
     return `${indent}${this.target} <= ${this.expression.toString()};`;
+  }
+
+  clone(): this {
+    return new ConcurrentSignalAssignment(this.target, this.expression) as this;
   }
 }
 
@@ -38,8 +45,8 @@ export class PortMapStatement extends ConcurrentStatement {
     super();
   }
 
-  run(architecture: Architecture): void {
-    this.portMap.parentArchitecture = architecture;
+  run(scope: Scope): void {
+    this.portMap.scope = scope;
     this.portMap.run();
   }
 
@@ -47,12 +54,16 @@ export class PortMapStatement extends ConcurrentStatement {
     return this.portMap.commit();
   }
 
-  override postStep(architecture: Architecture): void {
+  override postStep(): void {
     this.portMap.postStep();
   }
 
   toString(fmt?: FmtContext): string {
     return this.portMap.toString(fmt);
+  }
+
+  clone(): this {
+    return new PortMapStatement(this.portMap.clone()) as this;
   }
 }
 
@@ -62,15 +73,19 @@ export class PrintStatement extends ConcurrentStatement {
     super();
   }
 
-  run(architecture: Architecture): void {}
+  run(scope: Scope): void {}
 
-  override postStep(architecture: Architecture): boolean {
-    console.log(this.message.evaluate(architecture).value.toString());
+  override postStep(scope: Scope): boolean {
+    console.log(this.message.evaluate(scope).value.toString());
     return false;
   }
 
   override toString(fmt?: FmtContext): string {
     const indent = getIndent(fmt);
     return `${indent}print ${this.message.toString(fmt)};`;
+  }
+
+  clone(): this {
+    return new PrintStatement(this.message) as this;
   }
 }

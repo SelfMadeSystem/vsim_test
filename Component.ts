@@ -1,10 +1,11 @@
+import type { Cloneable } from "./Cloneable";
 import type { Entity } from "./Entity";
-import { BaseValue, ProjectedValue } from "./Values";
+import { BaseValue, TrackedValue } from "./Values";
 
-export class Component {
+export class Component implements Cloneable {
   constructor(
     public entity: Entity,
-    public inCbs: Map<string, () => ProjectedValue>,
+    public inCbs: Map<string, () => TrackedValue>,
     public outCbs: Map<string, (val: BaseValue<any>) => void>,
   ) {
     for (const inPort of entity.inPorts.values()) {
@@ -14,7 +15,7 @@ export class Component {
     }
   }
 
-  public getInput(name: string): ProjectedValue | null {
+  public getInput(name: string): TrackedValue | null {
     const cb = this.inCbs.get(name);
     if (!cb) {
       return null;
@@ -30,5 +31,9 @@ export class Component {
     }
     cb(value);
     return true;
+  }
+
+  clone(): this {
+    return new Component(this.entity, this.inCbs, this.outCbs) as this;
   }
 }

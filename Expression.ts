@@ -1,12 +1,13 @@
 import type { Architecture } from "./Architecture";
 import type { FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
+import type { Scope } from "./Scope";
 import type { Target } from "./Target";
-import { BitType, IntType, StringType } from "./Types";
+import { BitType, IntType } from "./Types";
 import { BitValue, IntValue, StringValue, UnknownValue, type BaseValue } from "./Values";
 
 export abstract class Expression implements Formattable {
-  abstract evaluate(architecture: Architecture): BaseValue<any>;
+  abstract evaluate(architecture: Scope): BaseValue<any>;
   abstract toString(fmt?: FmtContext): string;
 }
 
@@ -15,8 +16,8 @@ export class SignalExpression extends Expression {
     super();
   }
 
-  evaluate(architecture: Architecture): BaseValue<any> {
-    const value = this.target.getValue(architecture);
+  evaluate(scope: Scope): BaseValue<any> {
+    const value = this.target.getValue(scope);
     if (value === undefined) {
       throw new Error(`Signal ${this.target} not found in architecture`);
     }
@@ -33,7 +34,7 @@ export class LiteralExpression extends Expression {
     super();
   }
 
-  evaluate(architecture: Architecture): BaseValue<any> {
+  evaluate(): BaseValue<any> {
     return this.value;
   }
 
@@ -146,9 +147,9 @@ export class BinaryExpression extends Expression {
     super();
   }
 
-  evaluate(architecture: Architecture): BaseValue<any> {
-    const leftValue = this.left.evaluate(architecture);
-    const rightValue = this.right.evaluate(architecture);
+  evaluate(scope: Scope): BaseValue<any> {
+    const leftValue = this.left.evaluate(scope);
+    const rightValue = this.right.evaluate(scope);
     return this.operator.apply(leftValue, rightValue);
   }
 
@@ -185,8 +186,8 @@ export class UnaryExpression extends Expression {
     super();
   }
 
-  evaluate(architecture: Architecture): BaseValue<any> {
-    const operandValue = this.operand.evaluate(architecture);
+  evaluate(scope: Scope): BaseValue<any> {
+    const operandValue = this.operand.evaluate(scope);
     return this.operator.apply(operandValue);
   }
 
@@ -203,9 +204,9 @@ export class IndexExpression extends Expression {
     super();
   }
 
-  evaluate(architecture: Architecture): BaseValue<any> {
-    const arrayValue = this.array.evaluate(architecture);
-    const indexValue = this.index.evaluate(architecture);
+  evaluate(scope: Scope): BaseValue<any> {
+    const arrayValue = this.array.evaluate(scope);
+    const indexValue = this.index.evaluate(scope);
     if (!Array.isArray(arrayValue.value)) {
       throw new Error(`Index operator requires array value`);
     }

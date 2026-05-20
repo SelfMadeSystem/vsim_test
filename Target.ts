@@ -2,10 +2,11 @@ import type { Architecture } from "./Architecture";
 import type { Expression } from "./Expression";
 import type { FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
-import { ArrayValue, IntValue, type ProjectedValue } from "./Values";
+import type { Scope } from "./Scope";
+import { ArrayValue, IntValue, type TrackedValue } from "./Values";
 
 export abstract class Target implements Formattable {
-  abstract getValue(arch: Architecture): ProjectedValue;
+  abstract getValue(arch: Scope): TrackedValue;
   abstract toString(fmt?: FmtContext): string;
 }
 
@@ -14,8 +15,8 @@ export class NamedTarget extends Target {
     super();
   }
 
-  getValue(arch: Architecture): ProjectedValue {
-    return arch.getValue(this.targetName);
+  getValue(scope: Scope): TrackedValue {
+    return scope.getTrackedValue(this.targetName);
   }
 
   toString(): string {
@@ -31,9 +32,9 @@ export class IndexedTarget extends Target {
     super();
   }
 
-  getValue(arch: Architecture): ProjectedValue {
-    const baseValue = this.base.getValue(arch);
-    const indexValue = this.index.evaluate(arch);
+  getValue(scope: Scope): TrackedValue {
+    const baseValue = this.base.getValue(scope);
+    const indexValue = this.index.evaluate(scope);
     if (!(indexValue instanceof IntValue)) {
       throw new Error(`Index expression must evaluate to an integer`);
     }

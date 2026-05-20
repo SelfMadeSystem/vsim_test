@@ -34,13 +34,13 @@ export abstract class BaseValue<T> implements Formattable, Cloneable {
   abstract clone(): this;
 }
 
-export class ProjectedValue<T = any> {
-  public current: BaseValue<T>;
+export class TrackedValue<T = any> {
   public projected: BaseValue<T> | null = null;
 
-  constructor(value: BaseValue<T>) {
-    this.current = value;
-  }
+  constructor(
+    public type: BaseType,
+    public current: BaseValue<T>,
+  ) {}
 
   setProjected(projected: BaseValue<T>) {
     if (this.projected !== null) {
@@ -64,9 +64,13 @@ export class ProjectedValue<T = any> {
   }
 }
 
-export class OutProjectedValue<T = any> extends ProjectedValue<T> {
-  constructor(value: BaseValue<T>, public outCb: (value: BaseValue<T>) => void) {
-    super(value);
+export class ObservableTrackedValue<T = any> extends TrackedValue<T> {
+  constructor(
+    type: BaseType,
+    value: BaseValue<T>,
+    public outCb: (value: BaseValue<T>) => void,
+  ) {
+    super(type, value);
   }
 
   override commit(): boolean {
@@ -78,7 +82,7 @@ export class OutProjectedValue<T = any> extends ProjectedValue<T> {
   }
 }
 
-export const UnknownValue = new class extends BaseValue<any> {
+export const UnknownValue = new (class extends BaseValue<any> {
   constructor() {
     super(unknownValue);
   }
@@ -94,7 +98,25 @@ export const UnknownValue = new class extends BaseValue<any> {
   clone(): this {
     return this;
   }
-}
+})();
+
+export const UninitializedValue = new (class extends BaseValue<any> {
+  constructor() {
+    super(unknownValue);
+  }
+
+  getType(): BaseType {
+    return UnknownType;
+  }
+
+  toString(): string {
+    return "-";
+  }
+
+  clone(): this {
+    return this;
+  }
+})();
 
 export class BitValue extends BaseValue<boolean> {
   constructor(value: boolean | 0 | 1) {
@@ -150,12 +172,15 @@ export class StringValue extends BaseValue<string> {
   }
 }
 
-export class ArrayValue<T> extends BaseValue<ProjectedValue<T>[]> {
-  constructor(
-    values: BaseValue<T>[],
-  ) {
-    super(values.map((v) => new ProjectedValue(v)));
-    const type = values[0]?.getType() || UnknownType;
+export class ArrayValue<T> extends BaseValue<TrackedValue<T>[]> {
+  public type: BaseType;
+  constructor(values: BaseValue<T>[], knownType?: BaseType) {
+    const type =
+      knownType ??
+      values.find((v) => v.getType() !== UnknownType)?.getType() ??
+      UnknownType;
+    super(values.map((v) => new TrackedValue(type, v)));
+    this.type = type;
     for (const value of values) {
       if (!type.isType(value)) {
         throw new Error(
@@ -204,7 +229,9 @@ export class ArrayValue<T> extends BaseValue<ProjectedValue<T>[]> {
   }
 
   clone(): this {
-    const clonedElements = this.value.map((v) => new ProjectedValue(v.current.clone()));
+    const clonedElements = this.value.map(
+      (v) => new TrackedValue(this.type, v.current.clone()),
+    );
     return new ArrayValue(clonedElements.map((v) => v.current)) as this;
   }
 }
