@@ -81,6 +81,12 @@ export class PortMap implements Formattable, Cloneable {
     return delta;
   }
 
+  postStep(): void {
+    for (const arch of this.entityArchitectures) {
+      arch.postStep();
+    }
+  }
+
   toString(fmt?: FmtContext): string {
     const indent = getIndent(fmt);
     const mappingsStr = Array.from(this.portMap.entries())

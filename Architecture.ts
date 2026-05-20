@@ -57,9 +57,9 @@ export class Architecture implements Formattable, Cloneable {
   }
 
   step(): boolean {
-    this.deltaChange = false;
     this.execute();
     this.commit();
+    this.postStep();
     return this.deltaChange;
   }
 
@@ -70,6 +70,7 @@ export class Architecture implements Formattable, Cloneable {
   }
 
   commit() {
+    this.deltaChange = false;
     for (const [, projectedValue] of [
       ...this.signalValues,
       ...this.ephemeralValues,
@@ -78,6 +79,12 @@ export class Architecture implements Formattable, Cloneable {
     }
     for (const statement of this.concurrentStatements) {
       if (statement.commit(this)) this.deltaChange = true;
+    }
+  }
+
+  postStep() {
+    for (const statement of this.concurrentStatements) {
+      statement.postStep(this);
     }
   }
 

@@ -1,5 +1,4 @@
 import { Architecture } from "./Architecture";
-import { Component } from "./Component";
 import {
   SignalAssignment,
   PortMapStatement,
@@ -14,7 +13,7 @@ import {
 import { PortMap } from "./PortMap";
 import { NamedTarget as NamedTarget } from "./Target";
 import { BitType } from "./Types";
-import { BitValue, ProjectedValue, StringValue } from "./Values";
+import { BitValue } from "./Values";
 
 const fullAdder = new Entity("FullAdder", [
   new InPort("a", BitType),
@@ -97,6 +96,4 @@ testBenchArch.addConcurrentStatement(
 
 testBench.addArchitecture(testBenchArch);
 
-console.log(testBench.toString({ indentLevel: 0 }));
-testBenchArch.step();
-testBenchArch.step();
+while (testBenchArch.step());

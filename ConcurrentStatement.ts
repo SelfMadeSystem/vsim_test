@@ -10,6 +10,7 @@ export abstract class ConcurrentStatement implements Formattable {
   commit(architecture: Architecture): boolean {
     return false;
   }
+  postStep(architecture: Architecture): void {}
   abstract toString(fmt?: FmtContext): string;
 }
 
@@ -46,6 +47,10 @@ export class PortMapStatement extends ConcurrentStatement {
     return this.portMap.commit();
   }
 
+  override postStep(architecture: Architecture): void {
+    this.portMap.postStep();
+  }
+
   toString(fmt?: FmtContext): string {
     return this.portMap.toString(fmt);
   }
@@ -59,7 +64,7 @@ export class PrintStatement extends ConcurrentStatement {
 
   run(architecture: Architecture): void {}
 
-  override commit(architecture: Architecture): boolean {
+  override postStep(architecture: Architecture): boolean {
     console.log(this.message.evaluate(architecture).value.toString());
     return false;
   }
