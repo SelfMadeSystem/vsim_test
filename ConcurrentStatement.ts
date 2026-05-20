@@ -12,7 +12,7 @@ export abstract class ConcurrentStatement implements Formattable, Cloneable {
   commit(scope: Scope): boolean {
     return false;
   }
-  postStep(scope: Scope): void {}
+  postCycle(scope: Scope): void {}
   abstract toString(fmt?: FmtContext): string;
   abstract clone(): this;
 }
@@ -54,8 +54,8 @@ export class PortMapStatement extends ConcurrentStatement {
     return this.portMap.commit();
   }
 
-  override postStep(): void {
-    this.portMap.postStep();
+  override postCycle(): void {
+    this.portMap.postCycle();
   }
 
   toString(fmt?: FmtContext): string {
@@ -75,7 +75,7 @@ export class PrintStatement extends ConcurrentStatement {
 
   run(scope: Scope): void {}
 
-  override postStep(scope: Scope): boolean {
+  override postCycle(scope: Scope): boolean {
     console.log(this.message.evaluate(scope).value.toString());
     return false;
   }

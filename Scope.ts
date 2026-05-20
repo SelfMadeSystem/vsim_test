@@ -1,6 +1,8 @@
 import type { Architecture } from "./Architecture";
 import type { Cloneable } from "./Cloneable";
 import type { ConcurrentStatement } from "./ConcurrentStatement";
+import { MAX_DELTA_CYCLES } from "./Consts";
+import type { Entity } from "./Entity";
 import type { Target } from "./Target";
 import { TrackedValue, type BaseValue } from "./Values";
 
@@ -89,23 +91,76 @@ export class Scope implements Cloneable {
     return deltaChange;
   }
 
-  postStep() {
+  postCycle() {
     for (const statement of this.statements) {
-      statement.postStep(this);
+      statement.postCycle(this);
     }
     for (const child of this.childScopes) {
-      child.postStep();
+      child.postCycle();
     }
   }
 
   clone(): this {
     const newScope = new Scope(this.name);
     for (const [name, trackedValue] of this.trackedValues) {
-      newScope.trackedValues.set(name, new TrackedValue(trackedValue.type, trackedValue.current));
+      newScope.trackedValues.set(
+        name,
+        new TrackedValue(trackedValue.type, trackedValue.current),
+      );
     }
     for (const statement of this.statements) {
       newScope.statements.push(statement.clone());
     }
     return newScope as this;
+  }
+}
+
+export class GlobalScope {
+  public trackedValues: Map<string, TrackedValue> = new Map();
+  public entities: Map<string, Entity> = new Map();
+  public architecture: Architecture | null = null;
+
+  public timeStep = 0;
+  public deltaCycle = 0;
+
+  setArchitecture(arch: Architecture) {
+    this.architecture = arch;
+  }
+
+  addEntity(entity: Entity) {
+    if (this.entities.has(entity.name)) {
+      throw new Error(`Entity ${entity.name} already exists in global scope`);
+    }
+    this.entities.set(entity.name, entity);
+  }
+
+  cycle(): boolean {
+    this.execute();
+    const deltaChange = this.commit();
+    this.postCycle();
+    this.deltaCycle++;
+    return deltaChange;
+  }
+
+  execute() {
+    this.architecture?.execute();
+  }
+
+  commit(): boolean {
+    return this.architecture?.commit() ?? false;
+  }
+
+  postCycle() {
+    this.architecture?.postCycle();
+  }
+
+  step() {
+    this.deltaCycle = 0;
+    while (this.deltaCycle < MAX_DELTA_CYCLES && this.cycle());
+    if (this.deltaCycle >= MAX_DELTA_CYCLES) {
+      throw new Error(
+        `Simulation did not stabilize after ${MAX_DELTA_CYCLES} delta cycles`,
+      );
+    }
   }
 }

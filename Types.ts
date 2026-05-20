@@ -33,6 +33,7 @@ function primitiveType<T>(
 }
 
 export const UnknownType = primitiveType<any>("unknown", () => true);
+export const UninitializedType = primitiveType<any>("uninitialized", () => false);
 export const BitType = primitiveType<boolean>(
   "bit",
   (value) => value instanceof BitValue,

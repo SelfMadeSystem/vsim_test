@@ -5,7 +5,7 @@ import { BaseValue, TrackedValue } from "./Values";
 export class Component implements Cloneable {
   constructor(
     public entity: Entity,
-    public inCbs: Map<string, () => TrackedValue>,
+    public inCbs: Map<string, () => BaseValue<any>>,
     public outCbs: Map<string, (val: BaseValue<any>) => void>,
   ) {
     for (const inPort of entity.inPorts.values()) {
@@ -15,7 +15,7 @@ export class Component implements Cloneable {
     }
   }
 
-  public getInput(name: string): TrackedValue | null {
+  public getInput(name: string): BaseValue<any> | null {
     const cb = this.inCbs.get(name);
     if (!cb) {
       return null;

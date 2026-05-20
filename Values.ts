@@ -8,6 +8,7 @@ import {
   StringType,
   ArrayType,
   UnknownType,
+  UninitializedType,
 } from "./Types";
 
 export abstract class BaseValue<T> implements Formattable, Cloneable {
@@ -82,6 +83,44 @@ export class ObservableTrackedValue<T = any> extends TrackedValue<T> {
   }
 }
 
+export class VirtualTrackedValue<T = any> extends TrackedValue<T> {
+  constructor(
+    type: BaseType,
+    public inCb: () => BaseValue<T>,
+  ) {
+    super(type, inCb());
+  }
+
+  override commit(): boolean {
+    const newValue = this.inCb();
+    if (!this.current.equals(newValue)) {
+      this.current = newValue;
+      return true;
+    }
+    return false;
+  }
+}
+
+export class VirtualObservableTrackedValue<T = any> extends TrackedValue<T> {
+  constructor(
+    type: BaseType,
+    public inCb: () => BaseValue<T>,
+    public outCb: (value: BaseValue<T>) => void,
+  ) {
+    super(type, inCb());
+  }
+
+  override commit(): boolean {
+    const newValue = this.inCb();
+    if (!this.current.equals(newValue)) {
+      this.current = newValue;
+      this.outCb(this.current);
+      return true;
+    }
+    return false;
+  }
+}
+
 export const UnknownValue = new (class extends BaseValue<any> {
   constructor() {
     super(unknownValue);
@@ -106,7 +145,7 @@ export const UninitializedValue = new (class extends BaseValue<any> {
   }
 
   getType(): BaseType {
-    return UnknownType;
+    return UninitializedType;
   }
 
   toString(): string {

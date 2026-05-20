@@ -32,7 +32,7 @@ export class PortMap implements Formattable, Cloneable {
                 `PortMap component input callback called before scope is set`,
               );
             }
-            return mappedTarget.getValue(this.scope!);
+            return mappedTarget.getValue(this.scope!).current;
           };
           return [portName, cb];
         }),
@@ -82,9 +82,9 @@ export class PortMap implements Formattable, Cloneable {
     return delta;
   }
 
-  postStep(): void {
+  postCycle(): void {
     for (const arch of this.entityArchitectures) {
-      arch.postStep();
+      arch.postCycle();
     }
   }
 

@@ -11,9 +11,12 @@ import {
   SignalExpression,
 } from "./Expression";
 import { PortMap } from "./PortMap";
+import { GlobalScope } from "./Scope";
 import { NamedTarget as NamedTarget } from "./Target";
 import { BitType } from "./Types";
 import { BitValue } from "./Values";
+
+const global = new GlobalScope();
 
 const fullAdder = new Entity("FullAdder", [
   new InPort("a", BitType),
@@ -22,6 +25,8 @@ const fullAdder = new Entity("FullAdder", [
   new OutPort("sum", BitType),
   new OutPort("carryOut", BitType),
 ]);
+
+global.addEntity(fullAdder);
 
 const fullAdderArch = new Architecture("FullAdderBehavioral", fullAdder);
 
@@ -62,24 +67,26 @@ fullAdderArch.addConcurrentStatement(
 fullAdder.addArchitecture(fullAdderArch);
 
 const testBench = new Entity("TestBench", []);
+global.addEntity(testBench);
+
 const testBenchArch = new Architecture("TestBenchArch", testBench);
 
-testBenchArch.addSignalDef("a", BitType, new BitValue(true));
-testBenchArch.addSignalDef("b", BitType, new BitValue(true));
-testBenchArch.addSignalDef("carryIn", BitType, new BitValue(true));
-testBenchArch.addSignalDef("sum", BitType, new BitValue(false));
-testBenchArch.addSignalDef("carryOut", BitType, new BitValue(false));
+testBenchArch.addSignalDef("tb_a", BitType, new BitValue(true));
+testBenchArch.addSignalDef("tb_b", BitType, new BitValue(true));
+testBenchArch.addSignalDef("tb_carryIn", BitType, new BitValue(true));
+testBenchArch.addSignalDef("tb_sum", BitType, new BitValue(false));
+testBenchArch.addSignalDef("tb_carryOut", BitType, new BitValue(false));
 
 testBenchArch.addConcurrentStatement(
   new PortMapStatement(
     new PortMap(
       fullAdder,
       new Map([
-        ["a", new NamedTarget("a")],
-        ["b", new NamedTarget("b")],
-        ["carryIn", new NamedTarget("carryIn")],
-        ["sum", new NamedTarget("sum")],
-        ["carryOut", new NamedTarget("carryOut")],
+        ["a", new NamedTarget("tb_a")],
+        ["b", new NamedTarget("tb_b")],
+        ["carryIn", new NamedTarget("tb_carryIn")],
+        ["sum", new NamedTarget("tb_sum")],
+        ["carryOut", new NamedTarget("tb_carryOut")],
       ]),
     ),
   ),
@@ -87,13 +94,15 @@ testBenchArch.addConcurrentStatement(
 testBenchArch.addConcurrentStatement(
   new PrintStatement(
     new BinaryExpression(
-      new SignalExpression(new NamedTarget("sum")),
+      new SignalExpression(new NamedTarget("tb_sum")),
       BinaryOperator.AMPERSAND,
-      new SignalExpression(new NamedTarget("carryOut")),
+      new SignalExpression(new NamedTarget("tb_carryOut")),
     ),
   ),
 );
 
 testBench.addArchitecture(testBenchArch);
 
-while (testBenchArch.step());
+global.setArchitecture(testBenchArch);
+
+global.step();

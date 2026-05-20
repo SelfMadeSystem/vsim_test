@@ -11,6 +11,8 @@ import {
   TrackedValue,
   UninitializedValue,
   UnknownValue,
+  VirtualObservableTrackedValue,
+  VirtualTrackedValue,
   type BaseValue,
 } from "./Values";
 
@@ -47,13 +49,6 @@ export class Architecture implements Formattable, Cloneable {
     this.scope.statements.push(statement);
   }
 
-  step(): boolean {
-    this.execute();
-    this.commit();
-    this.postStep();
-    return this.deltaChange;
-  }
-
   execute() {
     this.scope.execute();
   }
@@ -67,8 +62,8 @@ export class Architecture implements Formattable, Cloneable {
     return this.deltaChange;
   }
 
-  postStep() {
-    this.scope.postStep();
+  postCycle() {
+    this.scope.postCycle();
   }
 
   public signalsToString(fmt?: FmtContext): string {
@@ -83,43 +78,65 @@ export class Architecture implements Formattable, Cloneable {
   }
 
   public getPortTrackedValue(name: string): TrackedValue {
-    if (this.component) {
-      const input = this.component.getInput(name);
-      if (input) {
-        return input;
-      }
+    const ephemeral = this.ephemeralValues.get(name);
+    if (ephemeral) {
+      return ephemeral;
     }
-    const port = this.entity.outPorts.get(name);
-    if (port) {
-      const ephemeral = this.ephemeralValues.get(name);
-      if (ephemeral) {
-        return ephemeral;
+    const inPort = this.entity.inPorts.get(name);
+    const outPort = this.entity.outPorts.get(name);
+    const inCb = this.component?.inCbs.get(name);
+    const outCb = this.component?.outCbs.get(name);
+    if (inCb && outCb) {
+      if (!inPort || !outPort) {
+        throw new Error(
+          `Port ${name} has both input and output callbacks but is not an inout port`,
+        );
       }
-      if (this.component) {
-        const cb = this.component.outCbs.get(name);
-        if (cb) {
-          const newEphemeral = new ObservableTrackedValue(
-            port.type,
-            UninitializedValue,
-            cb,
-          );
-          this.ephemeralValues.set(name, newEphemeral);
-          return newEphemeral;
-        }
+      const type = inPort.type;
+      if (type.toString() !== outPort.type.toString()) {
+        throw new Error(
+          `Port ${name} has mismatched input and output types: ${inPort.type.toString()} vs ${outPort.type.toString()}`,
+        );
       }
-      const newEphemeral = new TrackedValue(port.type, UninitializedValue);
-      this.ephemeralValues.set(name, newEphemeral);
+      const virtualValue = new VirtualObservableTrackedValue(type, inCb, outCb);
+      this.ephemeralValues.set(name, virtualValue);
+      return virtualValue;
+    }
+    if (inCb) {
+      if (!inPort) {
+        throw new Error(
+          `Port ${name} has input callback but is not an input port`,
+        );
+      }
+      const virtualValue = new VirtualTrackedValue(inPort.type, inCb);
+      this.ephemeralValues.set(name, virtualValue);
+      return virtualValue;
+    }
+    if (outCb) {
+      if (!outPort) {
+        throw new Error(
+          `Port ${name} has output callback but is not an output port`,
+        );
+      }
+      const observableValue = new ObservableTrackedValue(
+        outPort.type,
+        UnknownValue,
+        outCb,
+      );
+      this.ephemeralValues.set(name, observableValue);
+      return observableValue;
+    }
+    if (inPort || outPort) {
       console.warn(
-        `Warning: Output port ${name} has no driver in architecture ${this.name}`,
+        `Port ${name} has no callbacks but exists on entity ${this.entity.name}; treating as uninitialized signal`,
       );
-      return newEphemeral;
+      console.trace();
+      const port = inPort ?? outPort!;
+      const value = new TrackedValue(port.type, UninitializedValue);
+      this.ephemeralValues.set(name, value);
+      return value;
     }
-    if (this.entity.inPorts.has(name)) {
-      throw new Error(
-        `Input port ${name} cannot be read directly from architecture ${this.name}`,
-      );
-    }
-    throw new Error(`Signal ${name} not found in architecture`);
+    throw new Error(`Signal ${name} not found in architecture ${this.name}`);
   }
 
   public withComponent(component: Component): Architecture {
