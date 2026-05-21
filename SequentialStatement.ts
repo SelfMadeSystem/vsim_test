@@ -25,7 +25,7 @@ export class SignalAssignment extends SequentialStatement {
   execute(scope: Scope): ExecutionResult {
     const value = this.expression.evaluate(scope);
     scope.setProjectedValue(this.target, value);
-    return "cycle-block";
+    return "continue";
   }
 
   toString(fmt?: FmtContext): string {
