@@ -13,7 +13,10 @@ export class Scope implements Cloneable {
   public childScopes: Set<Scope> = new Set();
   public statements: ConcurrentStatement[] = [];
 
-  constructor(public name: string, public globalScope: GlobalScope) {}
+  constructor(
+    public name: string,
+    public globalScope: GlobalScope,
+  ) {}
 
   withParent(parent: Scope): this {
     this.parent = parent;
@@ -67,7 +70,7 @@ export class Scope implements Cloneable {
     const trackedValue = target.getValue(this);
     trackedValue.setProjected(value);
   }
-  
+
   setImmediately(target: Target, value: BaseValue<any>) {
     const trackedValue = target.getValue(this);
     trackedValue.current = value;
@@ -76,7 +79,7 @@ export class Scope implements Cloneable {
 
   execute() {
     for (const statement of this.statements) {
-      statement.run(this);
+      statement.execute(this);
     }
     for (const child of this.childScopes) {
       child.execute();
@@ -113,6 +116,10 @@ export class Scope implements Cloneable {
     for (const child of this.childScopes) {
       child.postStep();
     }
+  }
+
+  getStepCount() {
+    return this.globalScope.timeStep;
   }
 
   clone(): this {

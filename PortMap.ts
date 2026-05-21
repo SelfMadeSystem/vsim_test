@@ -67,7 +67,7 @@ export class PortMap implements Formattable, Cloneable {
     );
   }
 
-  run(): void {
+  execute(): void {
     for (const arch of this.entityArchitectures) {
       arch.execute();
     }
@@ -93,7 +93,7 @@ export class PortMap implements Formattable, Cloneable {
     const mappingsStr = Array.from(this.portMap.entries())
       .map(([portName, signalName]) => `${portName} => ${signalName}`)
       .join(", ");
-    return `${indent}port map (${mappingsStr})`;
+    return `${indent}port map ${this.entity.name} (${mappingsStr});`;
   }
 
   clone(): this {

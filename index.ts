@@ -3,18 +3,21 @@ import {
   ConcurrentSignalAssignment,
   PortMapStatement,
   PrintStatement,
+  ProcessStatement,
 } from "./ConcurrentStatement";
 import { Entity, InPort, OutPort } from "./Entity";
 import {
   BinaryExpression,
   BinaryOperator,
+  LiteralExpression,
   SignalExpression,
 } from "./Expression";
 import { PortMap } from "./PortMap";
 import { GlobalScope } from "./Scope";
+import { SequentialStatement, SignalAssignment, WaitForStatement } from "./SequentialStatement";
 import { NamedTarget as NamedTarget } from "./Target";
 import { BitType } from "./Types";
-import { BitValue } from "./Values";
+import { BitValue, IntValue } from "./Values";
 
 const global = new GlobalScope();
 
@@ -66,9 +69,9 @@ const testBench = new Entity("TestBench", [], global);
 
 const testBenchArch = new Architecture("TestBenchArch", testBench);
 
-testBenchArch.addSignalDef("tb_a", BitType, new BitValue(true));
-testBenchArch.addSignalDef("tb_b", BitType, new BitValue(true));
-testBenchArch.addSignalDef("tb_carryIn", BitType, new BitValue(true));
+testBenchArch.addSignalDef("tb_a", BitType, new BitValue(false));
+testBenchArch.addSignalDef("tb_b", BitType, new BitValue(false));
+testBenchArch.addSignalDef("tb_carryIn", BitType, new BitValue(false));
 testBenchArch.addSignalDef("tb_sum", BitType, new BitValue(false));
 testBenchArch.addSignalDef("tb_carryOut", BitType, new BitValue(false));
 
@@ -98,12 +101,48 @@ testBenchArch.addConcurrentStatement(
   ),
 );
 
+/*
+process begin
+  tb_a <= '0'; tb_b <= '0'; tb_carryIn <= '0';
+  wait for 1 ns;
+  tb_a <= '0'; tb_b <= '0'; tb_carryIn <= '1';
+  wait for 1 ns;
+  tb_a <= '0'; tb_b <= '1'; tb_carryIn <= '0';
+  wait for 1 ns;
+  tb_a <= '0'; tb_b <= '1'; tb_carryIn <= '1';
+  wait for 1 ns;
+  tb_a <= '1'; tb_b <= '0'; tb_carryIn <= '0';
+  wait for 1 ns;
+  tb_a <= '1'; tb_b <= '0'; tb_carryIn <= '1';
+  wait for 1 ns;
+  tb_a <= '1'; tb_b <= '1'; tb_carryIn <= '0';
+  wait for 1 ns;
+  tb_a <= '1'; tb_b <= '1'; tb_carryIn <= '1';
+end process;
+*/
+testBenchArch.addConcurrentStatement(
+  new ProcessStatement((() => {
+    const statements: SequentialStatement[] = [];
+    for (let aVal = 0; aVal <= 1; aVal++) {
+      for (let bVal = 0; bVal <= 1; bVal++) {
+        for (let carryInVal = 0; carryInVal <= 1; carryInVal++) {
+          statements.push(
+            new SignalAssignment(new NamedTarget("tb_a"), new LiteralExpression(new BitValue(aVal === 1))),
+            new SignalAssignment(new NamedTarget("tb_b"), new LiteralExpression(new BitValue(bVal === 1))),
+            new SignalAssignment(new NamedTarget("tb_carryIn"), new LiteralExpression(new BitValue(carryInVal === 1))),
+            new WaitForStatement(new LiteralExpression(new IntValue(1))),
+          );
+        }
+      }
+    }
+    return statements;
+  })()),
+);
+
 global.setArchitecture(testBenchArch); // set global architecture to test bench
 
-global.step();
-testBenchArch.scope.setImmediately(new NamedTarget("tb_a"), new BitValue(false));
-global.step();
-testBenchArch.scope.setImmediately(new NamedTarget("tb_b"), new BitValue(false));
-global.step();
-testBenchArch.scope.setImmediately(new NamedTarget("tb_carryIn"), new BitValue(false));
-global.step();
+console.log(testBenchArch.toString({ indentLevel: 0 }));
+
+for (let i = 0; i < 8; i++) {
+  global.step();
+}

@@ -1,13 +1,14 @@
 import type { Cloneable } from "./Cloneable";
 import type { Expression } from "./Expression";
-import { getIndent, type FmtContext } from "./FmtContext";
+import { getIndent, indentCtx, type FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import type { PortMap } from "./PortMap";
 import type { Scope } from "./Scope";
+import type { SequentialStatement } from "./SequentialStatement";
 import type { Target } from "./Target";
 
 export abstract class ConcurrentStatement implements Formattable, Cloneable {
-  abstract run(scope: Scope): void;
+  abstract execute(scope: Scope): void;
   commit(scope: Scope): boolean {
     return false;
   }
@@ -25,7 +26,7 @@ export class ConcurrentSignalAssignment extends ConcurrentStatement {
     super();
   }
 
-  run(scope: Scope): void {
+  execute(scope: Scope): void {
     const value = this.expression.evaluate(scope);
     scope.setProjectedValue(this.target, value);
   }
@@ -45,9 +46,9 @@ export class PortMapStatement extends ConcurrentStatement {
     super();
   }
 
-  run(scope: Scope): void {
+  execute(scope: Scope): void {
     this.portMap.scope = scope;
-    this.portMap.run();
+    this.portMap.execute();
   }
 
   override commit(): boolean {
@@ -73,7 +74,7 @@ export class PrintStatement extends ConcurrentStatement {
     super();
   }
 
-  run(scope: Scope): void {}
+  execute(scope: Scope): void {}
 
   override postStep(scope: Scope): boolean {
     console.log(this.message.evaluate(scope).value.toString());
@@ -87,5 +88,61 @@ export class PrintStatement extends ConcurrentStatement {
 
   clone(): this {
     return new PrintStatement(this.message) as this;
+  }
+}
+
+export class ProcessStatement extends ConcurrentStatement {
+  public stoppedAt = 0;
+  public stopped = false;
+  public deltaCycleContinue = false;
+
+  constructor(public statements: SequentialStatement[]) {
+    super();
+  }
+
+  execute(scope: Scope): void {
+    if (this.stopped) return;
+    for (let i = this.stoppedAt; i < this.statements.length; i++) {
+      const result = this.statements[i]!.execute(scope);
+      if (result === "cycle-block") {
+        this.stoppedAt = i + 1;
+        this.deltaCycleContinue = true;
+        return;
+      } else if (result === "step-block") {
+        this.stoppedAt = i;
+        this.stopped = true;
+        return;
+      }
+    }
+
+    this.stoppedAt = 0;
+  }
+
+  override commit(scope: Scope): boolean {
+    if (this.deltaCycleContinue) {
+      this.deltaCycleContinue = false;
+      return true;
+    }
+    return false;
+  }
+
+  override postStep(scope: Scope): void {
+    if (this.stopped) {
+      this.stopped = false;
+    }
+  }
+
+  toString(fmt?: FmtContext): string {
+    const indent = getIndent(fmt);
+    const innerFmt = indentCtx(fmt);
+    const statementsStr = this.statements
+      .map((stmt) => stmt.toString(innerFmt))
+      .join("\n");
+    return `${indent}process begin\n${statementsStr}\n${indent}end`;
+  }
+
+  clone(): this {
+    const clonedStatements = this.statements.map((stmt) => stmt.clone());
+    return new ProcessStatement(clonedStatements) as this;
   }
 }
