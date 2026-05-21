@@ -1,14 +1,15 @@
 export type FmtContext = {
-  indentLevel: number;
+  indentLevel?: number;
+  print?: boolean;
 };
 
 export function indentCtx(context?: FmtContext): FmtContext | undefined {
-  if (!context) return undefined;
+  if (!context || context.indentLevel === undefined) return context;
   return { indentLevel: context.indentLevel + 1 };
 }
 
 export function dedentCtx(context?: FmtContext): FmtContext | undefined {
-  if (!context) return undefined;
+  if (!context || context.indentLevel === undefined) return context;
   return { indentLevel: Math.max(0, context.indentLevel - 1) };
 }
 

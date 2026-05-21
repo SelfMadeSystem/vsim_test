@@ -83,7 +83,7 @@ export class PrintStatement extends ConcurrentStatement {
   execute(scope: Scope): void {}
 
   override postStep(scope: Scope): boolean {
-    console.log(this.message.evaluate(scope).value.toString());
+    console.log(this.message.evaluate(scope).value.toString({ print: true }));
     return false;
   }
 
@@ -134,9 +134,11 @@ export class ProcessStatement extends ConcurrentStatement implements Triggerable
       this.sensitivityList.length === 0;
 
     if (!triggered) return;
-
+    
+    this.triggered = false;
     this.deltaCycleContinue = false;
     this.paused = false;
+
     for (let i = this.stoppedAt; i < this.statements.length; i++) {
       const result = this.statements[i]!.execute(scope);
       if (result === "cycle-block") {
@@ -174,7 +176,7 @@ export class ProcessStatement extends ConcurrentStatement implements Triggerable
     const statementsStr = this.statements
       .map((stmt) => stmt.toString(innerFmt))
       .join("\n");
-    return `${indent}process (${sensitivityStr}) {\n${statementsStr}\n${indent}}`;
+    return `${indent}process (${sensitivityStr}) begin\n${statementsStr}\n${indent}end process;`;
   }
 
   clone(): this {

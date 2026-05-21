@@ -1,5 +1,6 @@
 import type { Cloneable } from "./Cloneable";
 import { unknownValue } from "./Consts";
+import type { FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import {
   BaseType,
@@ -19,7 +20,7 @@ export abstract class BaseValue<T> implements Formattable, Cloneable {
   }
 
   abstract getType(): BaseType;
-  abstract toString(): string;
+  abstract toString(fmt?: FmtContext): string;
 
   equals(other: BaseValue<any>): boolean {
     if (this.getType().equals(other.getType())) {
@@ -216,8 +217,9 @@ export class StringValue extends BaseValue<string> {
     return StringType;
   }
 
-  toString(): string {
-    return this.value;
+  toString({ print }: FmtContext = { print: false }): string {
+    if (print) return this.value;
+    return `"${this.value.replace(/"/g, '\\"')}"`;
   }
 
   clone(): this {
@@ -251,8 +253,8 @@ export class ArrayValue<T> extends BaseValue<TrackedValue<T>[]> {
     return new ArrayType(elementType, 0, this.value.length - 1);
   }
 
-  toString(): string {
-    const elements = this.value.map((v) => v.current.toString()).join(", ");
+  toString(fmt: FmtContext): string {
+    const elements = this.value.map((v) => v.current.toString(fmt)).join(", ");
     return `[${elements}]`;
   }
 

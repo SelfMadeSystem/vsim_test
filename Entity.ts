@@ -67,9 +67,13 @@ export class Entity implements Formattable {
       ...Array.from(this.inPorts.values()).map((p) => p.toString()),
       ...Array.from(this.outPorts.values()).filter((p) => !this.inPorts.has(p.name)).map((p) => p.toString()),
     ].join(";\n  " + indent);
-    const archsStr = Array.from(this.architectures.values())
+    return `entity ${this.name} is\n${indent}  ${portsStr};\nend entity;`;
+  }
+
+  archesToString(fmt?: FmtContext): string {
+    const archesStr = Array.from(this.architectures.values())
       .map((a) => a.toString(fmt))
-      .join("\n\n" + indent);
-    return `entity ${this.name} is\n${indent}  ${portsStr};\nend entity;\n\n${archsStr}`;
+      .join("\n\n");
+    return archesStr;
   }
 }

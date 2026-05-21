@@ -3,6 +3,8 @@ import type { Cloneable } from "./Cloneable";
 import type { ConcurrentStatement } from "./ConcurrentStatement";
 import { MAX_DELTA_CYCLES } from "./Consts";
 import type { Entity } from "./Entity";
+import { getIndent, indentCtx, type FmtContext } from "./FmtContext";
+import type { Formattable } from "./Formattable";
 import type { Target } from "./Target";
 import { TrackedValue, type BaseValue } from "./Values";
 
@@ -155,7 +157,7 @@ export class Scope implements Cloneable {
   }
 }
 
-export class GlobalScope {
+export class GlobalScope implements Formattable {
   public trackedValues: Map<string, TrackedValue> = new Map();
   public entities: Map<string, Entity> = new Map();
   public architecture: Architecture | null = null;
@@ -222,5 +224,13 @@ export class GlobalScope {
     }
     this.postStep();
     this.timeStep++;
+  }
+
+  toString(): string {
+    const fmt: FmtContext = { indentLevel: 0 };
+    const entitiesStr = Array.from(this.entities.values())
+      .map((e) => e.toString(fmt) + "\n\n" + e.archesToString(fmt))
+      .join("\n\n");
+    return entitiesStr;
   }
 }

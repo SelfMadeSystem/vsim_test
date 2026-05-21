@@ -72,3 +72,24 @@ export class WaitForStatement extends SequentialStatement {
     return new WaitForStatement(this.expression) as this;
   }
 }
+
+export class PrintStatement extends SequentialStatement {
+  constructor(public message: Expression) {
+    super();
+  }
+
+  execute(scope: Scope): ExecutionResult {
+    const value = this.message.evaluate(scope);
+    console.log(value.toString({ print: true }));
+    return "continue";
+  }
+
+  toString(fmt?: FmtContext): string {
+    const indent = getIndent(fmt);
+    return `${indent}print ${this.message.toString()};`;
+  }
+
+  clone(): this {
+    return new PrintStatement(this.message) as this;
+  }
+}

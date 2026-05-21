@@ -3,7 +3,7 @@ import type { FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import type { Scope } from "./Scope";
 import type { Target } from "./Target";
-import { BitType, IntType } from "./Types";
+import { BitType, IntType, StringType } from "./Types";
 import { BitValue, IntValue, StringValue, UnknownValue, type BaseValue } from "./Values";
 
 export abstract class Expression implements Formattable {
@@ -132,8 +132,8 @@ export abstract class BinaryOperator implements Formattable {
 
   static AMPERSAND = this.makeOperator("&", (left, right) => {
     // For simplicity sake, let's convert both to strings and concatenate
-    const leftVal = left === UnknownValue ? "unknown" : left.toString();
-    const rightVal = right === UnknownValue ? "unknown" : right.toString();
+    const leftVal = left.getType() === StringType ? left.value : left.toString();
+    const rightVal = right.getType() === StringType ? right.value : right.toString();
     return new StringValue(leftVal + rightVal);
   });
 }
