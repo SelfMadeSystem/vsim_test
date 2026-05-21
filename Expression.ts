@@ -4,10 +4,16 @@ import type { Formattable } from "./Formattable";
 import type { Scope } from "./Scope";
 import type { Target } from "./Target";
 import { BitType, IntType, StringType } from "./Types";
-import { BitValue, IntValue, StringValue, UnknownValue, type BaseValue } from "./Values";
+import {
+  BitValue,
+  IntValue,
+  StringValue,
+  UnknownValue,
+  type BaseValue,
+} from "./Values";
 
 export abstract class Expression implements Formattable {
-  abstract evaluate(architecture: Scope): BaseValue<any>;
+  abstract evaluate(scope: Scope): BaseValue<any>;
   abstract toString(fmt?: FmtContext): string;
 }
 
@@ -34,7 +40,7 @@ export class LiteralExpression extends Expression {
     super();
   }
 
-  evaluate(): BaseValue<any> {
+  evaluate(_scope: Scope): BaseValue<any> {
     return this.value;
   }
 
@@ -100,9 +106,7 @@ export abstract class BinaryOperator implements Formattable {
       return UnknownValue;
     }
     if (BitType.isType(left) && BitType.isType(right)) {
-      return new BitValue(
-        (left.value as boolean) !== (right.value as boolean),
-      );
+      return new BitValue((left.value as boolean) !== (right.value as boolean));
     }
     if (IntType.isType(left) && IntType.isType(right)) {
       return new IntValue((left.value as number) ^ (right.value as number));
@@ -132,8 +136,10 @@ export abstract class BinaryOperator implements Formattable {
 
   static AMPERSAND = this.makeOperator("&", (left, right) => {
     // For simplicity sake, let's convert both to strings and concatenate
-    const leftVal = left.getType() === StringType ? left.value : left.toString();
-    const rightVal = right.getType() === StringType ? right.value : right.toString();
+    const leftVal =
+      left.getType() === StringType ? left.value : left.toString();
+    const rightVal =
+      right.getType() === StringType ? right.value : right.toString();
     return new StringValue(leftVal + rightVal);
   });
 }
