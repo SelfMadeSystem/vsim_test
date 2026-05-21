@@ -109,6 +109,15 @@ export class Scope implements Cloneable {
     }
   }
 
+  preStep() {
+    for (const statement of this.statements) {
+      statement.preStep(this);
+    }
+    for (const child of this.childScopes) {
+      child.preStep();
+    }
+  }
+
   postStep() {
     for (const statement of this.statements) {
       statement.postStep(this);
@@ -176,11 +185,16 @@ export class GlobalScope {
     this.architecture?.postCycle();
   }
 
+  preStep() {
+    this.architecture?.preStep();
+  }
+
   postStep() {
     this.architecture?.postStep();
   }
 
   step() {
+    this.preStep();
     this.deltaCycle = 0;
     while (this.deltaCycle < MAX_DELTA_CYCLES && this.cycle());
     if (this.deltaCycle >= MAX_DELTA_CYCLES) {
@@ -188,7 +202,7 @@ export class GlobalScope {
         `Simulation did not stabilize after ${MAX_DELTA_CYCLES} delta cycles`,
       );
     }
-    this.timeStep++;
     this.postStep();
+    this.timeStep++;
   }
 }

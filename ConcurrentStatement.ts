@@ -6,6 +6,7 @@ import type { PortMap } from "./PortMap";
 import type { Scope } from "./Scope";
 import type { SequentialStatement } from "./SequentialStatement";
 import type { Target } from "./Target";
+import type { BaseValue } from "./Values";
 
 export abstract class ConcurrentStatement implements Formattable, Cloneable {
   abstract execute(scope: Scope): void;
@@ -13,6 +14,7 @@ export abstract class ConcurrentStatement implements Formattable, Cloneable {
     return false;
   }
   postCycle(scope: Scope): void {}
+  preStep(scope: Scope): void {}
   postStep(scope: Scope): void {}
   abstract toString(fmt?: FmtContext): string;
   abstract clone(): this;
@@ -94,14 +96,43 @@ export class PrintStatement extends ConcurrentStatement {
 export class ProcessStatement extends ConcurrentStatement {
   public stoppedAt = 0;
   public stopped = false;
+  public paused = false;
   public deltaCycleContinue = false;
+  public sensitivityMap: Map<Target, BaseValue<any>> = new Map();
 
-  constructor(public statements: SequentialStatement[]) {
+  constructor(
+    public sensitivityList: Target[],
+    public statements: SequentialStatement[],
+  ) {
     super();
+  }
+
+  override preStep(scope: Scope): void {
+    for (const target of this.sensitivityList) {
+      this.sensitivityMap.set(target, scope.getCurrentValue(target));
+    }
   }
 
   execute(scope: Scope): void {
     if (this.stopped) return;
+
+    let triggered =
+      this.paused ||
+      this.deltaCycleContinue ||
+      this.sensitivityList.length === 0;
+
+    for (const [target, lastValue] of this.sensitivityMap) {
+      const currentValue = scope.getCurrentValue(target);
+      if (!currentValue.equals(lastValue)) {
+        triggered = true;
+        this.sensitivityMap.set(target, currentValue);
+      }
+    }
+
+    if (!triggered) return;
+
+    this.deltaCycleContinue = false;
+    this.paused = false;
     for (let i = this.stoppedAt; i < this.statements.length; i++) {
       const result = this.statements[i]!.execute(scope);
       if (result === "cycle-block") {
@@ -111,6 +142,7 @@ export class ProcessStatement extends ConcurrentStatement {
       } else if (result === "step-block") {
         this.stoppedAt = i;
         this.stopped = true;
+        this.paused = true;
         return;
       }
     }
@@ -120,7 +152,6 @@ export class ProcessStatement extends ConcurrentStatement {
 
   override commit(scope: Scope): boolean {
     if (this.deltaCycleContinue) {
-      this.deltaCycleContinue = false;
       return true;
     }
     return false;
@@ -135,14 +166,15 @@ export class ProcessStatement extends ConcurrentStatement {
   toString(fmt?: FmtContext): string {
     const indent = getIndent(fmt);
     const innerFmt = indentCtx(fmt);
+    const sensitivityStr = this.sensitivityList.map((t) => t.toString(fmt)).join(", ");
     const statementsStr = this.statements
       .map((stmt) => stmt.toString(innerFmt))
       .join("\n");
-    return `${indent}process begin\n${statementsStr}\n${indent}end`;
+    return `${indent}process (${sensitivityStr}) {\n${statementsStr}\n${indent}}`;
   }
 
   clone(): this {
     const clonedStatements = this.statements.map((stmt) => stmt.clone());
-    return new ProcessStatement(clonedStatements) as this;
+    return new ProcessStatement(this.sensitivityList, clonedStatements) as this;
   }
 }

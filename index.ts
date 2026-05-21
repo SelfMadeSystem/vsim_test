@@ -72,7 +72,7 @@ const testBenchArch = new Architecture("TestBenchArch", testBench);
 testBenchArch.addSignalDef("tb_a", BitType, new BitValue(false));
 testBenchArch.addSignalDef("tb_b", BitType, new BitValue(false));
 testBenchArch.addSignalDef("tb_carryIn", BitType, new BitValue(false));
-testBenchArch.addSignalDef("tb_sum", BitType, new BitValue(false));
+testBenchArch.addSignalDef("tb_sum", BitType, new BitValue(true));
 testBenchArch.addSignalDef("tb_carryOut", BitType, new BitValue(false));
 
 // port map( a => tb_a, b => tb_b, carryIn => tb_carryIn, sum => tb_sum, carryOut => tb_carryOut );
@@ -121,7 +121,7 @@ process begin
 end process;
 */
 testBenchArch.addConcurrentStatement(
-  new ProcessStatement((() => {
+  new ProcessStatement([], (() => {
     const statements: SequentialStatement[] = [];
     for (let aVal = 0; aVal <= 1; aVal++) {
       for (let bVal = 0; bVal <= 1; bVal++) {

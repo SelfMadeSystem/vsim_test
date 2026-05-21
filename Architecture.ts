@@ -70,6 +70,10 @@ export class Architecture implements Formattable, Cloneable {
     this.scope.postCycle();
   }
 
+  preStep() {
+    this.scope.preStep();
+  }
+
   postStep() {
     this.scope.postStep();
   }
