@@ -6,9 +6,10 @@ import type { PortMap } from "./PortMap";
 import type { Scope } from "./Scope";
 import type { SequentialStatement } from "./SequentialStatement";
 import type { Target } from "./Target";
-import type { BaseValue } from "./Values";
+import type { Triggerable } from "./Values";
 
 export abstract class ConcurrentStatement implements Formattable, Cloneable {
+  setup(scope: Scope): void {}
   abstract execute(scope: Scope): void;
   commit(scope: Scope): boolean {
     return false;
@@ -48,8 +49,11 @@ export class PortMapStatement extends ConcurrentStatement {
     super();
   }
 
+  override setup(scope: Scope): void {
+    this.portMap.setup(scope);
+  }
+
   execute(scope: Scope): void {
-    this.portMap.scope = scope;
     this.portMap.execute();
   }
 
@@ -93,23 +97,30 @@ export class PrintStatement extends ConcurrentStatement {
   }
 }
 
-export class ProcessStatement extends ConcurrentStatement {
+export class ProcessStatement extends ConcurrentStatement implements Triggerable {
   public stoppedAt = 0;
   public stopped = false;
   public paused = false;
   public deltaCycleContinue = false;
-  public sensitivityMap: Map<Target, BaseValue<any>> = new Map();
+  public triggered = false;
 
   constructor(
-    public sensitivityList: Target[],
+    public sensitivityList: string[],
     public statements: SequentialStatement[],
   ) {
     super();
   }
 
-  override preStep(scope: Scope): void {
-    for (const target of this.sensitivityList) {
-      this.sensitivityMap.set(target, scope.getCurrentValue(target));
+  override setup(scope: Scope): void {
+    for (const dep of this.sensitivityList) {
+      const trackedValue = scope.getTrackedValue(dep);
+      if (trackedValue) {
+        trackedValue.triggers.push(this);
+      } else {
+        throw new Error(
+          `Sensitivity list item "${dep}" not found in scope "${scope.name}"`,
+        );
+      }
     }
   }
 
@@ -117,17 +128,10 @@ export class ProcessStatement extends ConcurrentStatement {
     if (this.stopped) return;
 
     let triggered =
+      this.triggered ||
       this.paused ||
       this.deltaCycleContinue ||
       this.sensitivityList.length === 0;
-
-    for (const [target, lastValue] of this.sensitivityMap) {
-      const currentValue = scope.getCurrentValue(target);
-      if (!currentValue.equals(lastValue)) {
-        triggered = true;
-        this.sensitivityMap.set(target, currentValue);
-      }
-    }
 
     if (!triggered) return;
 
@@ -166,7 +170,7 @@ export class ProcessStatement extends ConcurrentStatement {
   toString(fmt?: FmtContext): string {
     const indent = getIndent(fmt);
     const innerFmt = indentCtx(fmt);
-    const sensitivityStr = this.sensitivityList.map((t) => t.toString(fmt)).join(", ");
+    const sensitivityStr = this.sensitivityList.join(", ");
     const statementsStr = this.statements
       .map((stmt) => stmt.toString(innerFmt))
       .join("\n");

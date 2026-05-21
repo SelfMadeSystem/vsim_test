@@ -27,7 +27,10 @@ export class Architecture implements Formattable, Cloneable {
     public entity: Entity,
     cloned = false,
   ) {
-    this.scope = new Scope(`${name}_scope`, this.entity.globalScope).withArchitecture(this);
+    this.scope = new Scope(
+      `${name}_scope`,
+      this.entity.globalScope,
+    ).withArchitecture(this);
     if (!cloned) {
       this.entity.addArchitecture(this);
     }
@@ -51,6 +54,10 @@ export class Architecture implements Formattable, Cloneable {
 
   addConcurrentStatement(statement: ConcurrentStatement) {
     this.scope.statements.push(statement);
+  }
+
+  setup() {
+    this.scope.setup();
   }
 
   execute() {

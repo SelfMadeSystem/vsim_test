@@ -77,6 +77,15 @@ export class Scope implements Cloneable {
     trackedValue.projected = null;
   }
 
+  setup() {
+    for (const statement of this.statements) {
+      statement.setup(this);
+    }
+    for (const child of this.childScopes) {
+      child.setup();
+    }
+  }
+
   execute() {
     for (const statement of this.statements) {
       statement.execute(this);
@@ -150,6 +159,7 @@ export class GlobalScope {
   public trackedValues: Map<string, TrackedValue> = new Map();
   public entities: Map<string, Entity> = new Map();
   public architecture: Architecture | null = null;
+  public didSetup = false;
 
   public timeStep = 0;
   public deltaCycle = 0;
@@ -163,6 +173,10 @@ export class GlobalScope {
       throw new Error(`Entity ${entity.name} already exists in global scope`);
     }
     this.entities.set(entity.name, entity);
+  }
+
+  setup() {
+    this.architecture?.setup();
   }
 
   cycle(): boolean {
@@ -194,6 +208,10 @@ export class GlobalScope {
   }
 
   step() {
+    if (!this.didSetup) {
+      this.setup();
+      this.didSetup = true;
+    }
     this.preStep();
     this.deltaCycle = 0;
     while (this.deltaCycle < MAX_DELTA_CYCLES && this.cycle());

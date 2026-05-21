@@ -35,8 +35,13 @@ export abstract class BaseValue<T> implements Formattable, Cloneable {
   abstract clone(): this;
 }
 
+export interface Triggerable {
+  triggered: boolean;
+}
+
 export class TrackedValue<T = any> {
   public projected: BaseValue<T> | null = null;
+  public triggers: Triggerable[] = [];
 
   constructor(
     public type: BaseType,
@@ -51,6 +56,12 @@ export class TrackedValue<T = any> {
     }
   }
 
+  private trigger() {
+    for (const triggerable of this.triggers) {
+      triggerable.triggered = true;
+    }
+  }
+
   commit(): boolean {
     if (this.projected !== null) {
       if (this.current.equals(this.projected)) {
@@ -59,9 +70,12 @@ export class TrackedValue<T = any> {
       }
       this.current = this.projected;
       this.projected = null;
+      this.trigger();
       return true;
     }
-    return this.current.commit();
+    const r = this.current.commit();
+    if (r) this.trigger();
+    return r;
   }
 }
 

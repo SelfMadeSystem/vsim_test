@@ -67,6 +67,13 @@ export class PortMap implements Formattable, Cloneable {
     );
   }
 
+  setup(scope: Scope): void {
+    this.scope = scope;
+    for (const arch of this.entityArchitectures) {
+      arch.setup();
+    }
+  }
+
   execute(): void {
     for (const arch of this.entityArchitectures) {
       arch.execute();
