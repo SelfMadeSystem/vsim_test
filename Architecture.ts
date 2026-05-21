@@ -25,8 +25,12 @@ export class Architecture implements Formattable, Cloneable {
   constructor(
     public name: string,
     public entity: Entity,
+    cloned = false,
   ) {
-    this.scope = new Scope(`${name}_scope`).withArchitecture(this);
+    this.scope = new Scope(`${name}_scope`, this.entity.globalScope).withArchitecture(this);
+    if (!cloned) {
+      this.entity.addArchitecture(this);
+    }
   }
 
   addSignal(name: string, type: BaseType) {
@@ -168,7 +172,7 @@ export class Architecture implements Formattable, Cloneable {
   }
 
   clone(): this {
-    const clone = new Architecture(this.name, this.entity) as this;
+    const clone = new Architecture(this.name, this.entity, true) as this;
     clone.scope = this.scope.clone().withArchitecture(clone);
     clone.component = this.component?.clone() ?? null;
     return clone;

@@ -1,6 +1,7 @@
 import type { Architecture } from "./Architecture";
 import { getIndent, indentCtx, type FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
+import type { GlobalScope } from "./Scope";
 import type { BaseType } from "./Types";
 
 export abstract class Port implements Formattable {
@@ -32,7 +33,7 @@ export class Entity implements Formattable {
   public inPorts: Map<string, InPort | InOutPort> = new Map();
   public outPorts: Map<string, OutPort | InOutPort> = new Map();
 
-  constructor(name: string, ports: Port[]) {
+  constructor(name: string, ports: Port[], public globalScope: GlobalScope) {
     this.name = name;
     for (const port of ports) {
       if (port instanceof InPort || port instanceof InOutPort) {
@@ -48,6 +49,7 @@ export class Entity implements Formattable {
         this.outPorts.set(port.name, port);
       }
     }
+    this.globalScope.addEntity(this);
   }
 
   addArchitecture(arch: Architecture) {

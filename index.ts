@@ -24,9 +24,7 @@ const fullAdder = new Entity("FullAdder", [
   new InPort("carryIn", BitType),
   new OutPort("sum", BitType),
   new OutPort("carryOut", BitType),
-]);
-
-global.addEntity(fullAdder);
+], global);
 
 const fullAdderArch = new Architecture("FullAdderBehavioral", fullAdder);
 
@@ -64,10 +62,7 @@ fullAdderArch.addConcurrentStatement(
   ),
 );
 
-fullAdder.addArchitecture(fullAdderArch);
-
-const testBench = new Entity("TestBench", []);
-global.addEntity(testBench);
+const testBench = new Entity("TestBench", [], global);
 
 const testBenchArch = new Architecture("TestBenchArch", testBench);
 
@@ -77,6 +72,7 @@ testBenchArch.addSignalDef("tb_carryIn", BitType, new BitValue(true));
 testBenchArch.addSignalDef("tb_sum", BitType, new BitValue(false));
 testBenchArch.addSignalDef("tb_carryOut", BitType, new BitValue(false));
 
+// port map( a => tb_a, b => tb_b, carryIn => tb_carryIn, sum => tb_sum, carryOut => tb_carryOut );
 testBenchArch.addConcurrentStatement(
   new PortMapStatement(
     new PortMap(
@@ -91,18 +87,23 @@ testBenchArch.addConcurrentStatement(
     ),
   ),
 );
+// print(tb_sum & tb_carryOut);
 testBenchArch.addConcurrentStatement(
   new PrintStatement(
     new BinaryExpression(
-      new SignalExpression(new NamedTarget("tb_sum")),
-      BinaryOperator.AMPERSAND,
       new SignalExpression(new NamedTarget("tb_carryOut")),
+      BinaryOperator.AMPERSAND,
+      new SignalExpression(new NamedTarget("tb_sum")),
     ),
   ),
 );
 
-testBench.addArchitecture(testBenchArch);
+global.setArchitecture(testBenchArch); // set global architecture to test bench
 
-global.setArchitecture(testBenchArch);
-
+global.step();
+testBenchArch.scope.setImmediately(new NamedTarget("tb_a"), new BitValue(false));
+global.step();
+testBenchArch.scope.setImmediately(new NamedTarget("tb_b"), new BitValue(false));
+global.step();
+testBenchArch.scope.setImmediately(new NamedTarget("tb_carryIn"), new BitValue(false));
 global.step();
