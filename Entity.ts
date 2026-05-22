@@ -1,5 +1,5 @@
 import type { Architecture } from "./Architecture";
-import { getIndent, indentCtx, type FmtContext } from "./FmtContext";
+import { getIndent, type FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import type { GlobalScope } from "./Scope";
 import type { BaseType } from "./Types";

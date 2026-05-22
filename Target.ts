@@ -1,4 +1,3 @@
-import type { Architecture } from "./Architecture";
 import type { Expression } from "./Expression";
 import type { FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";

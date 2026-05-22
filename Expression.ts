@@ -1,4 +1,3 @@
-import type { Architecture } from "./Architecture";
 import type { FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import type { Scope } from "./Scope";

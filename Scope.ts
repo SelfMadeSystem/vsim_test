@@ -3,7 +3,7 @@ import type { Cloneable } from "./Cloneable";
 import type { ConcurrentStatement } from "./ConcurrentStatement";
 import { MAX_DELTA_CYCLES } from "./Consts";
 import type { Entity } from "./Entity";
-import { getIndent, indentCtx, type FmtContext } from "./FmtContext";
+import { type FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import type { Target } from "./Target";
 import { TrackedValue, type BaseValue } from "./Values";
