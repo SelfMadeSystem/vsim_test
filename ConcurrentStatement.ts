@@ -83,7 +83,7 @@ export class PrintStatement extends ConcurrentStatement {
   execute(scope: Scope): void {}
 
   override postStep(scope: Scope): void {
-    console.log(this.message.evaluate(scope).value.toString({ print: true }));
+    console.log(this.message.evaluate(scope).toString({ print: true }));
   }
 
   override toString(fmt?: FmtContext): string {
@@ -107,7 +107,7 @@ export class ProcessStatement
   public triggered = true;
 
   constructor(
-    public sensitivityList: string[],
+    public sensitivityList: Target[],
     public statements: SequentialStatement[],
   ) {
     super();
@@ -116,7 +116,7 @@ export class ProcessStatement
   override setup(scope: Scope): void {
     this.triggered = true; // trigger at time 0
     for (const dep of this.sensitivityList) {
-      const trackedValue = scope.getTrackedValue(dep);
+      const trackedValue = dep.getValue(scope);
       if (trackedValue) {
         trackedValue.triggers.push(this);
       } else {
@@ -130,11 +130,7 @@ export class ProcessStatement
   execute(scope: Scope): void {
     if (this.stopped) return;
 
-    let triggered =
-      this.triggered ||
-      this.paused ||
-      this.deltaCycleContinue ||
-      this.sensitivityList.length === 0;
+    let triggered = this.triggered || this.paused || this.deltaCycleContinue;
 
     if (!triggered) return;
 

@@ -1,6 +1,6 @@
 import type { Cloneable } from "./Cloneable";
 import type { Entity } from "./Entity";
-import { BaseValue, TrackedValue } from "./Values";
+import { BaseValue } from "./Values";
 
 export class Component implements Cloneable {
   constructor(

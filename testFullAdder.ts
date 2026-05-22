@@ -78,11 +78,11 @@ const testBench = new Entity("TestBench", [], global);
 
 const testBenchArch = new Architecture("TestBenchArch", testBench);
 
-testBenchArch.addSignalDef("tb_a", BitType, new BitValue(false));
-testBenchArch.addSignalDef("tb_b", BitType, new BitValue(false));
-testBenchArch.addSignalDef("tb_carryIn", BitType, new BitValue(false));
-testBenchArch.addSignalDef("tb_sum", BitType, new BitValue(false));
-testBenchArch.addSignalDef("tb_carryOut", BitType, new BitValue(false));
+testBenchArch.addSignal("tb_a", BitType);
+testBenchArch.addSignal("tb_b", BitType);
+testBenchArch.addSignal("tb_carryIn", BitType);
+testBenchArch.addSignal("tb_sum", BitType);
+testBenchArch.addSignal("tb_carryOut", BitType);
 
 // port map( a => tb_a, b => tb_b, carryIn => tb_carryIn, sum => tb_sum, carryOut => tb_carryOut );
 testBenchArch.addConcurrentStatement(
@@ -167,7 +167,7 @@ testBenchArch.addConcurrentStatement(
 
 testBenchArch.addConcurrentStatement(
   new ProcessStatement(
-    ["tb_sum"],
+    [new NamedTarget("tb_sum")],
     [
       new PrintStatement(
         new BinaryExpression(
@@ -182,7 +182,7 @@ testBenchArch.addConcurrentStatement(
 
 testBenchArch.addConcurrentStatement(
   new ProcessStatement(
-    ["tb_carryOut"],
+    [new NamedTarget("tb_carryOut")],
     [
       new PrintStatement(
         new BinaryExpression(

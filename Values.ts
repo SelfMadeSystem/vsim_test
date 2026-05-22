@@ -21,6 +21,7 @@ export abstract class BaseValue<T> implements Formattable, Cloneable {
 
   abstract getType(): BaseType;
   abstract toString(fmt?: FmtContext): string;
+  setProjected?(value: BaseValue<any>): void;
 
   equals(other: BaseValue<any>): boolean {
     if (this.getType().equals(other.getType())) {
@@ -50,6 +51,10 @@ export class TrackedValue<T = any> {
   ) {}
 
   setProjected(projected: BaseValue<T>) {
+    if (this.current.setProjected) {
+      this.current.setProjected(projected);
+      return;
+    }
     if (this.projected !== null) {
       this.projected = UnknownValue;
     } else {
@@ -242,6 +247,23 @@ export class ArrayValue<T> extends BaseValue<TrackedValue<T>[]> {
           `Array element type mismatch: expected ${type.toString()}, got ${value.getType().toString()}`,
         );
       }
+    }
+  }
+
+  override setProjected(projected: BaseValue<any>): void {
+    if (projected instanceof ArrayValue) {
+      if (projected.value.length !== this.value.length) {
+        throw new Error(
+          `Projected array length mismatch: expected ${this.value.length}, got ${projected.value.length}`,
+        );
+      }
+      for (let i = 0; i < this.value.length; i++) {
+        this.value[i]!.setProjected(projected.value[i]!.current);
+      }
+    } else {
+      throw new Error(
+        `Projected value type mismatch: expected ArrayValue, got ${projected.getType().toString()}`,
+      );
     }
   }
 

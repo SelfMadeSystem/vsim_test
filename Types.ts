@@ -4,12 +4,16 @@ import {
   BitValue,
   IntValue,
   StringValue,
+  UninitializedValue,
+  UnknownValue,
   type BaseValue,
 } from "./Values";
 
 export abstract class BaseType implements Formattable {
+  getDefaultValue(): BaseValue<any> {
+    return UninitializedValue;
+  }
   abstract toString(): string;
-
   abstract isType(value: BaseValue<any>): boolean;
 
   equals(other: BaseType): boolean {
@@ -27,7 +31,7 @@ function primitiveType<T>(
     }
 
     isType(value: BaseValue<any>): boolean {
-      return check(value);
+      return value === UnknownValue || value === UninitializedValue || check(value);
     }
   })();
 }
@@ -59,6 +63,14 @@ export class ArrayType extends BaseType {
 
   public get length(): number {
     return Math.abs(this.end - this.start) + 1;
+  }
+
+  override getDefaultValue(): BaseValue<any> {
+    const values = [];
+    for (let i = 0; i < this.length; i++) {
+      values.push(this.elementType.getDefaultValue());
+    }
+    return new ArrayValue(values, this.elementType);
   }
 
   override isType(value: any): boolean {

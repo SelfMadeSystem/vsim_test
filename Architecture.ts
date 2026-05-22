@@ -39,7 +39,7 @@ export class Architecture implements Formattable, Cloneable {
   addSignal(name: string, type: BaseType) {
     this.scope.addTrackedValue(
       name,
-      new TrackedValue(type, UninitializedValue),
+      new TrackedValue(type, type.getDefaultValue()),
     );
   }
 
@@ -90,7 +90,7 @@ export class Architecture implements Formattable, Cloneable {
     const lines = [];
     for (const [name, { current, type }] of this.scope.trackedValues) {
       const valueStr =
-        current === UnknownValue ? "" : ` = ${current.toString()}`;
+        current === UninitializedValue ? "" : ` = ${current.toString()}`;
       lines.push(`${indent}signal ${name}: ${type.toString()}${valueStr};`);
     }
     return lines.join("\n");

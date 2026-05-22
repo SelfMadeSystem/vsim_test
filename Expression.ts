@@ -7,6 +7,7 @@ import {
   BitValue,
   IntValue,
   StringValue,
+  UninitializedValue,
   UnknownValue,
   type BaseValue,
 } from "./Values";
@@ -55,9 +56,21 @@ export abstract class BinaryOperator implements Formattable {
   static makeOperator(
     symbol: string,
     applyFunc: (left: BaseValue<any>, right: BaseValue<any>) => BaseValue<any>,
+    override = false,
   ): BinaryOperator {
     return new (class extends BinaryOperator {
       apply(left: BaseValue<any>, right: BaseValue<any>): BaseValue<any> {
+        if (override) {
+          return applyFunc(left, right);
+        }
+        if (left === UnknownValue || right === UnknownValue) {
+          // console.warn(`Applying operator ${symbol} to unknown value(s) results in unknown value`);
+          return UnknownValue;
+        }
+        if (left === UninitializedValue || right === UninitializedValue) {
+          // console.warn(`Applying operator ${symbol} to uninitialized value(s) results in unknown value`);
+          return UnknownValue;
+        }
         return applyFunc(left, right);
       }
 
@@ -68,10 +81,6 @@ export abstract class BinaryOperator implements Formattable {
   }
 
   static AND = this.makeOperator("AND", (left, right) => {
-    if (left === UnknownValue || right === UnknownValue) {
-      console.warn(`AND operator received unknown value.`);
-      return UnknownValue;
-    }
     if (BitType.isType(left) && BitType.isType(right)) {
       return new BitValue((left.value as boolean) && (right.value as boolean));
     }
@@ -84,10 +93,6 @@ export abstract class BinaryOperator implements Formattable {
   });
 
   static OR = this.makeOperator("OR", (left, right) => {
-    if (left === UnknownValue || right === UnknownValue) {
-      console.warn(`OR operator received unknown value.`);
-      return UnknownValue;
-    }
     if (BitType.isType(left) && BitType.isType(right)) {
       return new BitValue((left.value as boolean) || (right.value as boolean));
     }
@@ -100,10 +105,6 @@ export abstract class BinaryOperator implements Formattable {
   });
 
   static XOR = this.makeOperator("XOR", (left, right) => {
-    if (left === UnknownValue || right === UnknownValue) {
-      console.warn(`XOR operator received unknown value.`);
-      return UnknownValue;
-    }
     if (BitType.isType(left) && BitType.isType(right)) {
       return new BitValue((left.value as boolean) !== (right.value as boolean));
     }
@@ -116,10 +117,6 @@ export abstract class BinaryOperator implements Formattable {
   });
 
   static NAND = this.makeOperator("NAND", (left, right) => {
-    if (left === UnknownValue || right === UnknownValue) {
-      console.warn(`NAND operator received unknown value.`);
-      return UnknownValue;
-    }
     if (BitType.isType(left) && BitType.isType(right)) {
       return new BitValue(
         !((left.value as boolean) && (right.value as boolean)),
@@ -140,7 +137,7 @@ export abstract class BinaryOperator implements Formattable {
     const rightVal =
       right.getType() === StringType ? right.value : right.toString();
     return new StringValue(leftVal + rightVal);
-  });
+  }, true);
 }
 
 export class BinaryExpression extends Expression {
