@@ -8,12 +8,13 @@
 // @ts-check
 
 /**
- * Matches a comma-separated list of the given rule zero or more times.
- * @param {Rule} rule
+ * Matches zero or more occurrences of `rule` separated by `separator`.
+ * @param {RuleOrLiteral} rule
+ * @param {string} separator
  * @returns {Rule}
  */
-function commaSep(rule) {
-  return optional(seq(rule, repeat(seq(",", rule))));
+function sep(rule, separator) {
+  return optional(seq(rule, repeat(seq(separator, rule))));
 }
 
 export default grammar({
@@ -46,31 +47,64 @@ export default grammar({
     entity: $ =>
       seq(
         "entity",
-        $.identifier,
-        optional(
-          seq("is", "port", "(", commaSep($.port_declaration), ")", ";"),
+        field("name", $.identifier),
+        field(
+          "ports",
+          optional(
+            seq("is", "port", "(", sep($.port_declaration, ";"), ")", ";"),
+          ),
         ),
         "end",
-        "entity",
+        optional(choice("entity", $.identifier, seq("entity", $.identifier))),
         ";",
       ),
 
     port_declaration: $ =>
-      seq($.identifier, ":", choice("in", "out", "inout"), $.type),
+      seq(
+        field("name", $.identifier),
+        ":",
+        field("direction", $.port_direction),
+        field("type", $.type),
+      ),
+
+    port_direction: $ => choice("in", "out", "inout"),
 
     type: $ => choice($.identifier, $.array_type),
 
-    array_type: $ => seq("array", "(", $.range, ")", "of", $.type),
+    array_type: $ =>
+      seq(
+        "array",
+        "(",
+        field("range", $.range),
+        ")",
+        "of",
+        field("type", $.type),
+      ),
 
-    range: $ => seq($.expression, choice("downto", "to"), $.expression),
+    range: $ =>
+      seq(
+        field("left", $.expression),
+        field("operator", choice("to", "downto")),
+        field("right", $.expression),
+      ),
 
     expression: $ =>
       choice(
         $.identifier,
         $.number,
         seq("(", $.expression, ")"),
-        prec.left(2, seq($.expression, $.binary_operator, $.expression)),
-        seq($.unary_operator, $.expression),
+        prec.left(
+          2,
+          seq(
+            field("left", $.expression),
+            field("operator", $.binary_operator),
+            field("right", $.expression),
+          ),
+        ),
+        seq(
+          field("operator", $.unary_operator),
+          field("operand", $.expression),
+        ),
       ),
 
     binary_operator: $ =>
@@ -94,44 +128,69 @@ export default grammar({
     architecture: $ =>
       seq(
         "architecture",
-        $.identifier,
+        field("name", $.identifier),
         "of",
-        $.identifier,
+        field("entity", $.identifier),
         "is",
-        repeat($._declaration),
+        field("declarations", repeat($._declaration)),
         "begin",
-        repeat($._concurrent_statement),
+        field("statements", repeat($._concurrent_statement)),
         "end",
-        "architecture",
+        optional(
+          choice(
+            "architecture",
+            $.identifier,
+            seq("architecture", $.identifier),
+          ),
+        ),
         ";",
       ),
 
     _declaration: $ => choice($.signal_declaration),
 
-    signal_declaration: $ => seq(
-      "signal",
-      $.identifier,
-      ":",
-      $.type,
-      optional(seq(":=", $.expression)),
-      ";",
-    ),
+    signal_declaration: $ =>
+      seq(
+        "signal",
+        field("name", $.identifier),
+        ":",
+        field("type", $.type),
+        optional(seq(":=", field("initial_value", $.expression))),
+        ";",
+      ),
 
-    _concurrent_statement: $ => choice($.assignment, $.process),
+    _concurrent_statement: $ => choice($.signal_assignment, $.process),
 
-    assignment: $ => seq($.identifier, "<=", $.expression, ";"),
+    signal_assignment: $ =>
+      seq(
+        field("target", $.identifier),
+        "<=",
+        field("value", $.expression),
+        ";",
+      ),
+
+    variable_assignment: $ =>
+      seq(
+        field("target", $.identifier),
+        ":=",
+        field("value", $.expression),
+        ";",
+      ),
 
     process: $ =>
       seq(
         "process",
-        optional(seq("(", commaSep($.identifier), ")")),
+        field(
+          "sensitivity_list",
+          optional(seq("(", sep($.identifier, ","), ")")),
+        ),
         "begin",
-        repeat($._sequential_statement),
+        field("statements", repeat($._sequential_statement)),
         "end",
         "process",
         ";",
       ),
 
-    _sequential_statement: $ => choice($.assignment),
+    _sequential_statement: $ =>
+      choice($.signal_assignment, $.variable_assignment),
   },
 });

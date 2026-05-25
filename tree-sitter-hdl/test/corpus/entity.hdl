@@ -1,0 +1,32 @@
+===================
+Entity declaration
+===================
+
+entity AND_GATE is
+  port (
+    A : in std_logic;
+    B : in std_logic;
+    Y : out std_logic
+  );
+end entity;
+
+---
+
+(source_file
+  (entity
+    name: (identifier)
+    ports: (port_declaration
+      name: (identifier)
+      direction: (port_direction)
+      type: (type (identifier))
+    )
+    ports: (port_declaration
+      name: (identifier)
+      direction: (port_direction)
+      type: (type (identifier))
+    )
+    ports: (port_declaration
+      name: (identifier)
+      direction: (port_direction)
+      type: (type (identifier))
+    )))
