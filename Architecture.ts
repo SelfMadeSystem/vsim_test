@@ -20,6 +20,7 @@ export class Architecture implements Formattable, Cloneable {
   public scope: Scope;
   public deltaChange: boolean = false;
   public component: Component | null = null;
+  public statements: ConcurrentStatement[] = [];
   private ephemeralValues: Map<string, TrackedValue> = new Map();
 
   constructor(
@@ -53,15 +54,19 @@ export class Architecture implements Formattable, Cloneable {
   }
 
   addConcurrentStatement(statement: ConcurrentStatement) {
-    this.scope.statements.push(statement);
+    this.statements.push(statement);
   }
 
   setup() {
-    this.scope.setup();
+    for (const statement of this.statements) {
+      statement.setup(this.scope);
+    }
   }
 
   execute() {
-    this.scope.execute();
+    for (const statement of this.statements) {
+      statement.execute(this.scope);
+    }
   }
 
   commit() {
@@ -69,20 +74,29 @@ export class Architecture implements Formattable, Cloneable {
     for (const [, projectedValue] of this.ephemeralValues) {
       if (projectedValue.commit()) this.deltaChange = true;
     }
+    for (const statement of this.statements) {
+      statement.commit(this.scope);
+    }
     if (this.scope.commit()) this.deltaChange = true;
     return this.deltaChange;
   }
 
   postCycle() {
-    this.scope.postCycle();
+    for (const statement of this.statements) {
+      statement.postCycle(this.scope);
+    }
   }
 
   preStep() {
-    this.scope.preStep();
+    for (const statement of this.statements) {
+      statement.preStep(this.scope);
+    }
   }
 
   postStep() {
-    this.scope.postStep();
+    for (const statement of this.statements) {
+      statement.postStep(this.scope);
+    }
   }
 
   public signalsToString(fmt?: FmtContext): string {
@@ -112,7 +126,7 @@ export class Architecture implements Formattable, Cloneable {
         );
       }
       const type = inPort.type;
-      if (type.toString() !== outPort.type.toString()) {
+      if (!type.equals(outPort.type)) {
         throw new Error(
           `Port ${name} has mismatched input and output types: ${inPort.type.toString()} vs ${outPort.type.toString()}`,
         );
@@ -175,7 +189,7 @@ export class Architecture implements Formattable, Cloneable {
     } else {
       lines.push(`${archStart} begin`);
     }
-    for (const statement of this.scope.statements) {
+    for (const statement of this.statements) {
       lines.push(statement.toString(indentCtx(fmt)));
     }
     lines.push(`${indent}end ${this.name};`);
@@ -186,6 +200,7 @@ export class Architecture implements Formattable, Cloneable {
     const clone = new Architecture(this.name, this.entity, true) as this;
     clone.scope = this.scope.clone().withArchitecture(clone);
     clone.component = this.component?.clone() ?? null;
+    clone.statements.push(...this.statements.map(s => s.clone()));
     return clone;
   }
 }

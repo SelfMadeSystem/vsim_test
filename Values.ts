@@ -41,7 +41,7 @@ export interface Triggerable {
   triggered: boolean;
 }
 
-export class TrackedValue<T = any> {
+export class TrackedValue<T = any> implements Cloneable {
   public projected: BaseValue<T> | null = null;
   public triggers: Triggerable[] = [];
 
@@ -83,6 +83,10 @@ export class TrackedValue<T = any> {
     if (r) this.trigger();
     return r;
   }
+
+  clone() {
+    return new TrackedValue(this.type, this.current) as this;
+  }
 }
 
 export class ObservableTrackedValue<T = any> extends TrackedValue<T> {
@@ -101,6 +105,10 @@ export class ObservableTrackedValue<T = any> extends TrackedValue<T> {
     }
     return changed;
   }
+
+  override clone() {
+    return new ObservableTrackedValue(this.type, this.current, this.outCb) as this;
+  }
 }
 
 export class VirtualTrackedValue<T = any> extends TrackedValue<T> {
@@ -118,6 +126,10 @@ export class VirtualTrackedValue<T = any> extends TrackedValue<T> {
       return true;
     }
     return false;
+  }
+
+  override clone() {
+    return new VirtualTrackedValue(this.type, this.inCb) as this;
   }
 }
 
@@ -138,6 +150,10 @@ export class VirtualObservableTrackedValue<T = any> extends TrackedValue<T> {
       return true;
     }
     return false;
+  }
+
+  override clone() {
+    return new VirtualObservableTrackedValue(this.type, this.inCb, this.outCb) as this;
   }
 }
 

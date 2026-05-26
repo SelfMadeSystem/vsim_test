@@ -1,6 +1,5 @@
 import type { Architecture } from "./Architecture";
 import type { Cloneable } from "./Cloneable";
-import type { ConcurrentStatement } from "./ConcurrentStatement";
 import { MAX_DELTA_CYCLES } from "./Consts";
 import type { Entity } from "./Entity";
 import { type FmtContext } from "./FmtContext";
@@ -12,19 +11,11 @@ export class Scope implements Cloneable {
   public trackedValues: Map<string, TrackedValue> = new Map();
   public parent: Scope | null = null;
   public architecture: Architecture | null = null;
-  public childScopes: Set<Scope> = new Set();
-  public statements: ConcurrentStatement[] = [];
 
   constructor(
     public name: string,
     public globalScope: GlobalScope,
   ) {}
-
-  withParent(parent: Scope): this {
-    this.parent = parent;
-    parent.childScopes.add(this);
-    return this;
-  }
 
   withArchitecture(architecture: Architecture): this {
     this.architecture = architecture;
@@ -79,63 +70,12 @@ export class Scope implements Cloneable {
     trackedValue.projected = null;
   }
 
-  setup() {
-    for (const statement of this.statements) {
-      statement.setup(this);
-    }
-    for (const child of this.childScopes) {
-      child.setup();
-    }
-  }
-
-  execute() {
-    for (const statement of this.statements) {
-      statement.execute(this);
-    }
-    for (const child of this.childScopes) {
-      child.execute();
-    }
-  }
-
   commit(): boolean {
     let deltaChange = false;
     for (const [, trackedValue] of this.trackedValues) {
       if (trackedValue.commit()) deltaChange = true;
     }
-    for (const statement of this.statements) {
-      if (statement.commit(this)) deltaChange = true;
-    }
-    for (const child of this.childScopes) {
-      if (child.commit()) deltaChange = true;
-    }
     return deltaChange;
-  }
-
-  postCycle() {
-    for (const statement of this.statements) {
-      statement.postCycle(this);
-    }
-    for (const child of this.childScopes) {
-      child.postCycle();
-    }
-  }
-
-  preStep() {
-    for (const statement of this.statements) {
-      statement.preStep(this);
-    }
-    for (const child of this.childScopes) {
-      child.preStep();
-    }
-  }
-
-  postStep() {
-    for (const statement of this.statements) {
-      statement.postStep(this);
-    }
-    for (const child of this.childScopes) {
-      child.postStep();
-    }
   }
 
   getStepCount() {
@@ -147,11 +87,8 @@ export class Scope implements Cloneable {
     for (const [name, trackedValue] of this.trackedValues) {
       newScope.trackedValues.set(
         name,
-        new TrackedValue(trackedValue.type, trackedValue.current),
+        trackedValue.clone(),
       );
-    }
-    for (const statement of this.statements) {
-      newScope.statements.push(statement.clone());
     }
     return newScope as this;
   }
