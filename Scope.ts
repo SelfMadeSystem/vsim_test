@@ -2,10 +2,10 @@ import type { Architecture } from "./Architecture";
 import type { Cloneable } from "./Cloneable";
 import { MAX_DELTA_CYCLES } from "./Consts";
 import type { Entity } from "./Entity";
-import { type FmtContext } from "./FmtContext";
+import { getIndent, type FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import type { Target } from "./Target";
-import { TrackedValue, type BaseValue } from "./Values";
+import { TrackedValue, UninitializedValue, type BaseValue } from "./Values";
 
 export class Scope implements Cloneable {
   public trackedValues: Map<string, TrackedValue> = new Map();
@@ -82,13 +82,21 @@ export class Scope implements Cloneable {
     return this.globalScope.timeStep;
   }
 
+  public signalsToString(fmt?: FmtContext): string {
+    const indent = getIndent(fmt);
+    const lines = [];
+    for (const [name, { current, type }] of this.trackedValues) {
+      const valueStr =
+        current === UninitializedValue ? "" : ` = ${current.toString()}`;
+      lines.push(`${indent}signal ${name}: ${type.toString()}${valueStr};`);
+    }
+    return lines.join("\n");
+  }
+
   clone(): this {
     const newScope = new Scope(this.name, this.globalScope);
     for (const [name, trackedValue] of this.trackedValues) {
-      newScope.trackedValues.set(
-        name,
-        trackedValue.clone(),
-      );
+      newScope.trackedValues.set(name, trackedValue.clone());
     }
     return newScope as this;
   }

@@ -3,10 +3,11 @@ import type { Expression } from "./Expression";
 import { getIndent, indentCtx, type FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import type { PortMap } from "./PortMap";
-import type { Scope } from "./Scope";
+import { Scope } from "./Scope";
 import type { SequentialStatement } from "./SequentialStatement";
 import type { Target } from "./Target";
-import type { Triggerable } from "./Values";
+import type { BaseType } from "./Types";
+import { TrackedValue, type BaseValue, type Triggerable } from "./Values";
 
 export abstract class ConcurrentStatement implements Formattable, Cloneable {
   setup(scope: Scope): void {}
@@ -181,5 +182,131 @@ export class ProcessStatement
   clone(): this {
     const clonedStatements = this.statements.map((stmt) => stmt.clone());
     return new ProcessStatement(this.sensitivityList, clonedStatements) as this;
+  }
+}
+
+export class BlockStatement extends ConcurrentStatement {
+  public scope: Scope | null = null;
+  // store values before scope gets created so that we can add them when creating the scope
+  private valuesToSet: [string, BaseValue<any>][] = [];
+
+  constructor(public statements: ConcurrentStatement[]) {
+    super();
+  }
+
+  addSignal(name: string, type: BaseType) {
+    if (this.scope) {
+      this.scope.addTrackedValue(
+        name,
+        new TrackedValue(type, type.getDefaultValue()),
+      );
+    } else {
+      this.valuesToSet.push([name, type.getDefaultValue()]);
+    }
+  }
+
+  addSignalDef(name: string, type: BaseType, initialValue: BaseValue<any>) {
+    if (!type.isType(initialValue)) {
+      throw new Error(
+        `Type mismatch for signal ${name}: expected ${type.toString()}, got ${initialValue.getType().toString()}`,
+      );
+    }
+    if (this.scope) {
+      this.scope.addTrackedValue(name, new TrackedValue(type, initialValue));
+    } else {
+      this.valuesToSet.push([name, initialValue]);
+    }
+  }
+
+  addConcurrentStatement(statement: ConcurrentStatement) {
+    this.statements.push(statement);
+  }
+
+  override setup(scope: Scope): void {
+    this.scope = new Scope("block", scope.globalScope).withArchitecture(
+      scope.getArchitecture(),
+    );
+    this.scope.parent = scope;
+    for (const [name, value] of this.valuesToSet) {
+      this.scope.addTrackedValue(
+        name,
+        new TrackedValue(value.getType(), value),
+      );
+    }
+    for (const statement of this.statements) {
+      statement.setup(this.scope);
+    }
+  }
+
+  execute(scope: Scope): void {
+    if (!this.scope) {
+      throw new Error("Block scope not initialized");
+    }
+    for (const statement of this.statements) {
+      statement.execute(this.scope);
+    }
+  }
+
+  override commit(scope: Scope): boolean {
+    if (!this.scope) {
+      throw new Error("Block scope not initialized");
+    }
+    let changed = false;
+    for (const statement of this.statements) {
+      if (statement.commit(this.scope)) changed = true;
+    }
+    if (this.scope.commit()) changed = true;
+    return changed;
+  }
+
+  override postCycle(scope: Scope): void {
+    if (!this.scope) {
+      throw new Error("Block scope not initialized");
+    }
+    for (const statement of this.statements) {
+      statement.postCycle(this.scope);
+    }
+  }
+
+  override preStep(scope: Scope): void {
+    if (!this.scope) {
+      throw new Error("Block scope not initialized");
+    }
+    for (const statement of this.statements) {
+      statement.preStep(this.scope);
+    }
+  }
+
+  override postStep(scope: Scope): void {
+    if (!this.scope) {
+      throw new Error("Block scope not initialized");
+    }
+    for (const statement of this.statements) {
+      statement.postStep(this.scope);
+    }
+  }
+
+  toString(fmt?: FmtContext): string {
+    const indent = getIndent(fmt);
+    const innerFmt = indentCtx(fmt);
+    const signalsStr = this.scope ? this.scope.signalsToString(innerFmt) : "";
+    const statementsStr = this.statements
+      .map((stmt) => stmt.toString(innerFmt))
+      .join("\n");
+    const blockHeader = signalsStr
+      ? `block is\n${signalsStr}\n${indent}begin`
+      : `block begin`;
+    return `\
+${indent}${blockHeader}
+${statementsStr}
+${indent}end block;`;
+  }
+
+  clone(): this {
+    const clonedStatements = this.statements.map((stmt) => stmt.clone());
+    const clone = new BlockStatement(clonedStatements) as this;
+    clone.scope = this.scope?.clone() ?? null;
+    clone.valuesToSet.push(...this.valuesToSet);
+    return clone;
   }
 }

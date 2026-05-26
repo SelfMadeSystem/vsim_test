@@ -99,17 +99,6 @@ export class Architecture implements Formattable, Cloneable {
     }
   }
 
-  public signalsToString(fmt?: FmtContext): string {
-    const indent = getIndent(fmt);
-    const lines = [];
-    for (const [name, { current, type }] of this.scope.trackedValues) {
-      const valueStr =
-        current === UninitializedValue ? "" : ` = ${current.toString()}`;
-      lines.push(`${indent}signal ${name}: ${type.toString()}${valueStr};`);
-    }
-    return lines.join("\n");
-  }
-
   public getPortTrackedValue(name: string): TrackedValue {
     const ephemeral = this.ephemeralValues.get(name);
     if (ephemeral) {
@@ -184,7 +173,7 @@ export class Architecture implements Formattable, Cloneable {
     const archStart = `${indent}architecture ${this.name} of ${this.entity.name}`;
     if (this.scope.trackedValues.size > 0) {
       lines.push(`${archStart} is`);
-      lines.push(this.signalsToString(indentCtx(fmt)));
+      lines.push(this.scope.signalsToString(indentCtx(fmt)));
       lines.push(`${indent}begin`);
     } else {
       lines.push(`${archStart} begin`);
