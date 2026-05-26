@@ -17,6 +17,19 @@ function sep(rule, separator) {
   return optional(seq(rule, repeat(seq(separator, rule))));
 }
 
+/**
+ * @param {GrammarSymbols<string>} $
+ * @param {RuleOrLiteral} name
+ */
+function endRule($, name) {
+  return seq(
+    "end",
+    optional(name),
+    optional(field("end_name", $.identifier)),
+    ";",
+  );
+}
+
 export default grammar({
   name: "hdl",
 
@@ -54,9 +67,7 @@ export default grammar({
             seq("is", "port", "(", sep($.port_declaration, ";"), ")", ";"),
           ),
         ),
-        "end",
-        optional(choice("entity", $.identifier, seq("entity", $.identifier))),
-        ";",
+        endRule($, "entity"),
       ),
 
     port_declaration: $ =>
@@ -135,15 +146,7 @@ export default grammar({
         field("declarations", repeat($._declaration)),
         "begin",
         field("statements", repeat($._concurrent_statement)),
-        "end",
-        optional(
-          choice(
-            "architecture",
-            $.identifier,
-            seq("architecture", $.identifier),
-          ),
-        ),
-        ";",
+        endRule($, "architecture"),
       ),
 
     _declaration: $ => choice($.signal_declaration),

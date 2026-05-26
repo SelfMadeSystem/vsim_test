@@ -13,6 +13,16 @@
           }
         ]
       },
+      "end_name": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
       "entity": {
         "multiple": false,
         "required": true,
@@ -47,16 +57,6 @@
           }
         ]
       }
-    },
-    "children": {
-      "multiple": false,
-      "required": false,
-      "types": [
-        {
-          "type": "identifier",
-          "named": true
-        }
-      ]
     }
   },
   {
@@ -94,14 +94,10 @@
     "type": "entity",
     "named": true,
     "fields": {
-      "_": {
-        "multiple": true,
+      "end_name": {
+        "multiple": false,
         "required": false,
         "types": [
-          {
-            "type": "entity",
-            "named": false
-          },
           {
             "type": "identifier",
             "named": true
