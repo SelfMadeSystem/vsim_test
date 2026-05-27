@@ -1,5 +1,8 @@
 import { Architecture } from "./Architecture";
-import { ProcessStatement, PrintStatement as ConcurrentPrintStatement } from "./ConcurrentStatement";
+import {
+  ProcessStatement,
+  ConcurrentPrintStatement,
+} from "./ConcurrentStatement";
 import { Entity } from "./Entity";
 import { LiteralExpression, SignalExpression } from "./Expression";
 import { GlobalScope } from "./Scope";
@@ -21,9 +24,7 @@ const arrayArch = new Architecture("ArrayArch", arrayEntity);
 arrayArch.addSignal("input", new ArrayType(BitType, 0, 1));
 
 arrayArch.addConcurrentStatement(
-  new ConcurrentPrintStatement(
-    new SignalExpression(new NamedTarget("input")),
-  ),
+  new ConcurrentPrintStatement(new SignalExpression(new NamedTarget("input"))),
 );
 
 arrayArch.addConcurrentStatement(
@@ -61,10 +62,9 @@ arrayArch.addConcurrentStatement(
       new WaitForStatement(new LiteralExpression(new IntValue(1))),
       new SignalAssignment(
         new NamedTarget("input"),
-        new LiteralExpression(new ArrayValue([
-          new BitValue(0),
-          new BitValue(0),
-        ]))
+        new LiteralExpression(
+          new ArrayValue([new BitValue(0), new BitValue(0)]),
+        ),
       ),
       new WaitForStatement(new LiteralExpression(new IntValue(1))),
       new SignalAssignment(
@@ -77,18 +77,16 @@ arrayArch.addConcurrentStatement(
       new WaitForStatement(new LiteralExpression(new IntValue(1))),
       new SignalAssignment(
         new NamedTarget("input"),
-        new LiteralExpression(new ArrayValue([
-          new BitValue(0),
-          new BitValue(0),
-        ]))
+        new LiteralExpression(
+          new ArrayValue([new BitValue(0), new BitValue(0)]),
+        ),
       ),
       new WaitForStatement(new LiteralExpression(new IntValue(1))),
       new SignalAssignment(
         new NamedTarget("input"),
-        new LiteralExpression(new ArrayValue([
-          new BitValue(1),
-          new BitValue(1),
-        ]))
+        new LiteralExpression(
+          new ArrayValue([new BitValue(1), new BitValue(1)]),
+        ),
       ),
     ],
   ),

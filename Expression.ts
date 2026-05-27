@@ -138,6 +138,50 @@ export abstract class BinaryOperator implements Formattable {
       right.getType() === StringType ? right.value : right.toString();
     return new StringValue(leftVal + rightVal);
   }, true);
+
+  static EQUALS = this.makeOperator("=", (left, right) => {
+    return new BitValue(left.equals(right));
+  });
+
+  static NOT_EQUALS = this.makeOperator("/=", (left, right) => {
+    return new BitValue(!left.equals(right));
+  });
+
+  static LESS_THAN = this.makeOperator("<", (left, right) => {
+    if (IntType.isType(left) && IntType.isType(right)) {
+      return new BitValue((left.value as number) < (right.value as number));
+    }
+    throw new Error(
+      `Less than operator requires int values. Got ${left.getType().toString()} and ${right.getType().toString()}`,
+    );
+  });
+
+  static GREATER_THAN = this.makeOperator(">", (left, right) => {
+    if (IntType.isType(left) && IntType.isType(right)) {
+      return new BitValue((left.value as number) > (right.value as number));
+    }
+    throw new Error(
+      `Greater than operator requires int values. Got ${left.getType().toString()} and ${right.getType().toString()}`,
+    );
+  });
+
+  static LESS_THAN_OR_EQUALS = this.makeOperator("<=", (left, right) => {
+    if (IntType.isType(left) && IntType.isType(right)) {
+      return new BitValue((left.value as number) <= (right.value as number));
+    }
+    throw new Error(
+      `Less than or equals operator requires int values. Got ${left.getType().toString()} and ${right.getType().toString()}`,
+    );
+  });
+
+  static GREATER_THAN_OR_EQUALS = this.makeOperator(">=", (left, right) => {
+    if (IntType.isType(left) && IntType.isType(right)) {
+      return new BitValue((left.value as number) >= (right.value as number));
+    }
+    throw new Error(
+      `Greater than or equals operator requires int values. Got ${left.getType().toString()} and ${right.getType().toString()}`,
+    );
+  });
 }
 
 export class BinaryExpression extends Expression {

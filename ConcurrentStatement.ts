@@ -7,7 +7,7 @@ import { Scope } from "./Scope";
 import type { SequentialStatement } from "./SequentialStatement";
 import type { Target } from "./Target";
 import type { BaseType } from "./Types";
-import { TrackedValue, type BaseValue, type Triggerable } from "./Values";
+import { TrackedValue, TRUE, type BaseValue, type Triggerable } from "./Values";
 
 export abstract class ConcurrentStatement implements Formattable, Cloneable {
   setup(scope: Scope): void {}
@@ -76,7 +76,7 @@ export class PortMapStatement extends ConcurrentStatement {
 }
 
 // TODO: this shouldn't be here
-export class PrintStatement extends ConcurrentStatement {
+export class ConcurrentPrintStatement extends ConcurrentStatement {
   constructor(public message: Expression) {
     super();
   }
@@ -93,7 +93,7 @@ export class PrintStatement extends ConcurrentStatement {
   }
 
   clone(): this {
-    return new PrintStatement(this.message) as this;
+    return new ConcurrentPrintStatement(this.message) as this;
   }
 }
 
@@ -308,5 +308,108 @@ ${indent}end block;`;
     clone.scope = this.scope?.clone() ?? null;
     clone.valuesToSet.push(...this.valuesToSet);
     return clone;
+  }
+}
+
+export class ConcurrentIfStatement extends ConcurrentStatement {
+  public executedBranchIndex: number = -1; // -1 means else branch, otherwise index of branches array
+  constructor(
+    public branches: {
+      condition: Expression;
+      statements: ConcurrentStatement[];
+    }[],
+    public elseBranch: ConcurrentStatement[] = [],
+  ) {
+    super();
+  }
+
+  *allStatements(): Iterable<ConcurrentStatement> {
+    for (const { statements } of this.branches) {
+      yield* statements;
+    }
+    yield* this.elseBranch;
+  }
+
+  *executedStatements(): Iterable<ConcurrentStatement> {
+    if (this.executedBranchIndex === -1) {
+      yield* this.elseBranch;
+    } else {
+      yield* this.branches[this.executedBranchIndex]!.statements;
+    }
+  }
+
+  override setup(scope: Scope): void {
+    for (const statement of this.allStatements()) {
+      statement.setup(scope);
+    }
+  }
+
+  execute(scope: Scope): void {
+    this.executedBranchIndex = -1;
+    for (let i = 0; i < this.branches.length; i++) {
+      const { condition } = this.branches[i]!;
+      const conditionValue = condition.evaluate(scope);
+      if (conditionValue.equals(TRUE)) {
+        this.executedBranchIndex = i;
+        break;
+      }
+    }
+    for (const statement of this.executedStatements()) {
+      statement.execute(scope);
+    }
+  }
+
+  override commit(scope: Scope): boolean {
+    let changed = false;
+    for (const statement of this.executedStatements()) {
+      if (statement.commit(scope)) changed = true;
+    }
+    return changed;
+  }
+
+  override postCycle(scope: Scope): void {
+    for (const statement of this.executedStatements()) {
+      statement.postCycle(scope);
+    }
+  }
+
+  override preStep(scope: Scope): void {
+    for (const statement of this.allStatements()) {
+      statement.preStep(scope);
+    }
+  }
+
+  override postStep(scope: Scope): void {
+    for (const statement of this.executedStatements()) {
+      statement.postStep(scope);
+    }
+  }
+
+  toString(fmt?: FmtContext): string {
+    const indent = getIndent(fmt);
+    const innerFmt = indentCtx(fmt);
+    const branchesStr = this.branches
+      .map(
+        ({ condition, statements }) =>
+          `if ${condition.toString(innerFmt)} then\n${statements
+            .map((stmt) => stmt.toString(indentCtx(innerFmt)))
+            .join("\n")}`,
+      )
+      .join(`\n${indent}els`);
+    const elseStr = this.elseBranch.length
+      ? `\n${indent}else\n${this.elseBranch
+          .map((stmt) => stmt.toString(indentCtx(innerFmt)))
+          .join("\n")}`
+      : "";
+    return `${indent}${branchesStr}${elseStr}\n${indent}end if;`;
+  }
+
+  clone(): this {
+    const clonedBranches = this.branches.map(({ condition, statements }) => ({
+      condition,
+      statements: statements.map((stmt) => stmt.clone()),
+    }));
+    const clonedElseBranch = this.elseBranch.map((stmt) => stmt.clone());
+    return new ConcurrentIfStatement(clonedBranches, clonedElseBranch) as this;
   }
 }

@@ -3,7 +3,7 @@ import {
   ConcurrentSignalAssignment,
   PortMapStatement,
   ProcessStatement,
-  PrintStatement as ConcurrentPrintStatement,
+  ConcurrentPrintStatement,
 } from "./ConcurrentStatement";
 import { Entity, InPort, OutPort } from "./Entity";
 import {

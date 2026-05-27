@@ -328,3 +328,6 @@ export class ArrayValue<T> extends BaseValue<TrackedValue<T>[]> {
     return new ArrayValue(clonedElements.map((v) => v.current)) as this;
   }
 }
+
+export const TRUE = new BitValue(true);
+export const FALSE = new BitValue(false);
