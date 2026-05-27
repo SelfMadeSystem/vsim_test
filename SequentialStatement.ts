@@ -1,6 +1,6 @@
 import type { Cloneable } from "./Cloneable";
 import type { Expression } from "./Expression";
-import { getIndent, type FmtContext } from "./FmtContext";
+import { getIndent, indentCtx, type FmtContext } from "./FmtContext";
 import type { Formattable } from "./Formattable";
 import type { Scope } from "./Scope";
 import type { Target } from "./Target";
@@ -91,5 +91,64 @@ export class PrintStatement extends SequentialStatement {
 
   clone(): this {
     return new PrintStatement(this.message) as this;
+  }
+}
+
+export class IfStatement extends SequentialStatement {
+  constructor(
+    public branches: { condition: Expression; statements: SequentialStatement[] }[],
+    public elseBranch: SequentialStatement[] = [],
+  ) {
+    super();
+  }
+
+  execute(scope: Scope): ExecutionResult {
+    for (const branch of this.branches) {
+      const conditionValue = branch.condition.evaluate(scope);
+      if (conditionValue.value) {
+        for (const stmt of branch.statements) {
+          const result = stmt.execute(scope);
+          if (result !== "continue") {
+            return result;
+          }
+        }
+        return "continue";
+      }
+    }
+    for (const stmt of this.elseBranch) {
+      const result = stmt.execute(scope);
+      if (result !== "continue") {
+        return result;
+      }
+    }
+    return "continue";
+  }
+
+  toString(fmt?: FmtContext): string {
+    const indent = getIndent(fmt);
+    const innerFmt = indentCtx(fmt);
+    const branchesStr = this.branches
+      .map(
+        ({ condition, statements }) =>
+          `if ${condition.toString(innerFmt)} then\n${statements
+            .map((stmt) => stmt.toString(indentCtx(innerFmt)))
+            .join("\n")}`,
+      )
+      .join(`\n${indent}els`);
+    const elseStr = this.elseBranch.length
+      ? `\n${indent}else\n${this.elseBranch
+          .map((stmt) => stmt.toString(indentCtx(innerFmt)))
+          .join("\n")}`
+      : "";
+    return `${indent}${branchesStr}${elseStr}`;
+  }
+
+  clone(): this {
+    const clonedBranches = this.branches.map(({ condition, statements }) => ({
+      condition,
+      statements: statements.map((stmt) => stmt.clone()),
+    }));
+    const clonedElseBranch = this.elseBranch.map((stmt) => stmt.clone());
+    return new IfStatement(clonedBranches, clonedElseBranch) as this;
   }
 }

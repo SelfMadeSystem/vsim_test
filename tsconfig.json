@@ -26,5 +26,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  }
+  },
+  // exclude WIP parser for now
+  "exclude": ["./parser.ts", "./tree-sitter-hdl"]
 }
